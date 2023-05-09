@@ -7,17 +7,16 @@ repos on your machine.
 
 ## Usage
 
-- `add` - adds repo to the config file.
-- `remove` - remove repo from the config file.
-  - default to hard removing the directory from the filesystem
-  - can specify `--archive` which moves a directory to `$GITRS_ROOT` instead of
-  hard removing.
+Global arguments
+
+- `--root <path>` - specify `$GITRS_ROOT`. Defaults to `$HOME/src`.
+
+Subcommands
+
+- `add <url>` - adds repo to the config file.
+- `remove <url>` - remove repo from the config file.
 - `sync` - reads the config file and adds or removes repos from the filesystem
 to match the state of the config.
-- (TODO) `watch` - watches the config file for updates and syncs the filesystem.
-- (TODO) `list` - lists repos in the config file.
-- (TODO) `status` - checks to see if cloned repos, need removed and/or if
-  remote updates need fetched.
 
 ## Design goals
 
@@ -39,11 +38,15 @@ to match the state of the config.
 
 ## TODO
 
-- [ ] nix package
+- [ ] (TODO) lockfile / statefile.
+- [ ] (TODO) pinning / skipping a repo from being checked for updates.
+- [ ] (TODO) `sync --clean` - only remove repositories, doesn't update or clone.
+- [ ] (TODO) `sync --archive` - archives repositories, to `$GITRS_ROOT/.archived`.
 - [ ] (TODO) `watch` - watches the config file for updates and syncs the filesystem.
 - [ ] (TODO) `list` - lists repos in the config file.
 - [ ] (TODO) `status` - checks to see if cloned repos, need removed and/or if
   remote updates need fetched.
+- [ ] (TODO) Nix package
 
 ## Inspiration
 
