@@ -18,6 +18,18 @@ Subcommands
 - `sync` - reads the config file and adds or removes repos from the filesystem
 to match the state of the config.
 
+## `.gitrs.yaml` config file
+
+```bash
+metadata:
+ version: v1beta
+repos:
+- name: github.com/mccurdyc/gitrs
+  protocol: <ssh|https>
+  sha: <sha>
+  pin: <true|false>
+```
+
 ## Design goals
 
 - Do one thing well: clone, update or remove repos from the filesystem.
@@ -39,7 +51,8 @@ to match the state of the config.
 ## TODO
 
 - [ ] (TODO) lockfile / statefile.
-- [ ] (TODO) pinning / skipping a repo from being checked for updates.
+- [ ] (TODO) `add --pin [<SHA>]` pinning / skipping a repo from being checked for updates.
+- [ ] (TODO) `sync --restore <FILE>` - restore from a gitrs lockfile.
 - [ ] (TODO) `sync --clean` - only remove repositories, doesn't update or clone.
 - [ ] (TODO) `sync --archive` - archives repositories, to `$GITRS_ROOT/.archived`.
 - [ ] (TODO) `watch` - watches the config file for updates and syncs the filesystem.
