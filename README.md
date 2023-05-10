@@ -20,9 +20,10 @@ to match the state of the config.
 
 ## `.gitrs.yaml` config file
 
-```bash
+```yaml
 metadata:
  version: v1beta
+ root: /home/user/src
 repos:
 - name: github.com/mccurdyc/gitrs
   protocol: <ssh|https>
@@ -35,6 +36,8 @@ repos:
 - Do one thing well: clone, update or remove repos from the filesystem.
   - Won't support running commands against cloned repos.
 - Opinionated file structure. For example, `$GOPATH`. But you can specify a `GITRS_ROOT`.
+- You could have multiple "roots" for different uses.
+For example, `$HOME/{work,personal}` with separate gitrs configs.
 - Have a single, config file for declaring the repos to manage.
 - The config file is the source of truth for all repos cloned to your machine.
   - If you run `add`, it adds the repo to the config file.
