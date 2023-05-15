@@ -1,12 +1,16 @@
+use anyhow::Error;
+use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+pub mod config;
+pub mod fs;
+pub mod repo;
 
 /// A simple, opinionated, tool, written in Rust, for declaretively managing Git repos on your machine.
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-    #[arg(global = true, long, value_name = "FILE", default_value = "$HOME/src")]
+    #[arg(global = true, long, value_name = "FILE")]
     root: Option<PathBuf>,
 
     #[command(subcommand)]
@@ -16,56 +20,40 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Add repository to config to be managed by gitrs.
-    Add { repo: String },
-    /// Remove repository from the filesystem and from being managed by gitrs.
-    Remove {
+    Add {
         repo: String,
-        // TODO
-        // #[arg(short, long)]
-        // archive: bool,
+        // TODO - implement
+        #[arg(short, long)]
+        pin: bool,
     },
+    /// Remove repository from the filesystem and from being managed by gitrs.
+    Remove { repo: String },
     /// Sync fetches a repository if it exists, clones it if it doesn't, and
     /// removes it if it exists, but the config no longer has a record for it.
     Sync {
-        // TODO
-        // /// Force a clean-only sync i.e., don't fetch updates or try to clone missing repos.
-        // #[arg(short, long)]
-        // clean: bool,
+        // TODO - implement
+        /// Force a clean-only sync i.e., don't fetch updates or try to clone missing repos.
+        #[arg(short, long)]
+        clean_only: bool,
     },
 }
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
-    handle(cli)
+    run(cli)
 }
 
-fn handle(c: Cli) -> anyhow::Result<()> {
-    // TODO: if root/.gitrs.yaml doesn't exist, create it.
-    if let Some(r) = c.root.as_deref() {
-        println!("root: {}", r.display());
-    }
+fn run(c: Cli) -> anyhow::Result<(), Error> {
+    let mut r = fs::init(c.root)?;
+    r.push(".gitrs.yaml");
+    let cfg = config::Config::new(r);
 
     match &c.command {
-        Commands::Add { repo } => {
-            println!("'add' {repo:?}")
-            // TODO: adds a line to the config file.
-            // - The line is going to need to specify
-            // <https/ssh> <provider>/<org>/<name>
-            // This isn't easily-parsable / YAML format
-        }
-        Commands::Remove { repo } => {
-            println!("'remove' {repo:?}")
-            // TODO: removes a line from the config file.
-            // - Allow just specifying <name> and then have user select if there are
-            // multiple results.
-        }
-        Commands::Sync {} => {
-            println!("'sync'")
-            // TODO: reads config file.
-            // TODO: checks some state/lockfile / uses the GITRS_ROOT as a the state DB
-            // - would be nice to not have to traverse the filesystem a bunch when a lot
-            // of the time there might be nothing to do.
-            // TODO: writes to the state/lockfile.
+        Commands::Add { repo, pin } => cfg.add(repo, pin).expect("couldn't add repo '{repo:?}"),
+        Commands::Remove { repo } => cfg.remove(repo).expect("couldn't remove repo '{repo:?}"),
+        Commands::Sync { clean_only } => {
+            let repos = cfg.list_active_repos()?;
+            fs::sync(repos, clean_only).expect("failed to sync repos");
         }
     }
     Ok(())

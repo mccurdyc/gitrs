@@ -26,15 +26,32 @@ metadata:
  root: /home/user/src
 repos:
 - name: github.com/mccurdyc/gitrs
-  protocol: <ssh|https>
-  sha: <sha>
+  # could we do something like go and abstract this away?
+  # https://stackoverflow.com/questions/27500861/whats-the-proper-way-to-go-get-a-private-repository#27501039
+  # https://cs.opensource.google/go/go/+/refs/heads/master:src/cmd/go/internal/vcs/vcs.go%3Bdrc=3ee12d5702be8e2e13e256d6dec28c6464e0a7e5%3Bl=282
+  # https://cs.opensource.google/go/go/+/refs/heads/master:src/cmd/go/internal/vcs/vcs.go%3Bl=300%3Bdrc=3ee12d5702be8e2e13e256d6dec28c6464e0a7e5
   pin: <true|false>
+  remove: <true|false>
+```
+
+## `.gitrslock.yaml` file
+
+```yaml
+metadata:
+ version: v1beta
+ root: /home/user/src
+ last_sync: <timestamp>
+repos:
+- name: github.com/mccurdyc/gitrs
+  sha: <sha>
+  last_fetch: <timestamp>
 ```
 
 ## Design goals
 
 - Do one thing well: clone, update or remove repos from the filesystem.
   - Won't support running commands against cloned repos.
+- Only supports SSH cloning, [similar to Go](https://cs.opensource.google/go/go/+/refs/heads/master:src/cmd/go/internal/vcs/vcs.go%3Bl=102%3Bdrc=3ee12d5702be8e2e13e256d6dec28c6464e0a7e5).
 - Opinionated file structure. For example, `$GOPATH`. But you can specify a `GITRS_ROOT`.
 - You could have multiple "roots" for different uses.
 For example, `$HOME/{work,personal}` with separate gitrs configs.
@@ -57,7 +74,7 @@ For example, `$HOME/{work,personal}` with separate gitrs configs.
 - [ ] (TODO) `add --pin [<SHA>]` pinning / skipping a repo from being checked for updates.
 - [ ] (TODO) `sync --restore <FILE>` - restore from a gitrs lockfile.
 - [ ] (TODO) `sync --clean` - only remove repositories, doesn't update or clone.
-- [ ] (TODO) `sync --archive` - archives repositories, to `$GITRS_ROOT/.archived`.
+- [ ] (CONSIDER) `sync --archive` - archives repositories, to `$GITRS_ROOT/.archived`.
 - [ ] (TODO) `watch` - watches the config file for updates and syncs the filesystem.
 - [ ] (TODO) `list` - lists repos in the config file.
 - [ ] (TODO) `status` - checks to see if cloned repos, need removed and/or if

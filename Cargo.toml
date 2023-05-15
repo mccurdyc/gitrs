@@ -9,3 +9,5 @@ edition = "2021"
 anyhow = "1.0.71"
 clap = { version = "4.2.7", features = ["derive"] }
 git2 = "0.17.1"
+home = "0.5.5"
+serde_yaml = "0.9.21"
