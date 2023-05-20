@@ -1,6 +1,6 @@
 use anyhow::Error;
 use clap::{Parser, Subcommand};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub mod config;
 pub mod fs;
@@ -12,6 +12,8 @@ pub mod repo;
 struct Cli {
     #[arg(global = true, long, value_name = "FILE")]
     root: Option<PathBuf>,
+    #[arg(global = true, long, value_name = "FILE")]
+    config: Option<PathBuf>,
 
     #[command(subcommand)]
     command: Commands,
@@ -44,15 +46,14 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn run(c: Cli) -> anyhow::Result<(), Error> {
-    let mut r = fs::init(c.root)?;
-    r.push(".gitrs.yaml");
-    let cfg = config::Config::new(r);
+    let r = fs::init(c.root)?;
+    let cfg = config::Config::new(r).load(&Path::new(".gitrs.yaml"))?;
 
     match &c.command {
         Commands::Add { repo, pin } => cfg.add(repo, pin).expect("couldn't add repo '{repo:?}"),
         Commands::Remove { repo } => cfg.remove(repo).expect("couldn't remove repo '{repo:?}"),
         Commands::Sync { clean_only } => {
-            let repos = cfg.list_active_repos()?;
+            let repos = cfg.list_repos()?;
             fs::sync(repos, clean_only).expect("failed to sync repos");
         }
     }

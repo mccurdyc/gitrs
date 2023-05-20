@@ -1,20 +1,22 @@
 use crate::repo;
+use anyhow::{anyhow, Result};
 use home;
-use std::{env, fs, io::Error, io::ErrorKind, path::PathBuf};
+use std::{env, fs, path::PathBuf};
 
 const ENV_GITRS_ROOT: &str = "GITRS_ROOT";
 const GITRS_ROOT_DEFAULT: &str = "/src";
 
-pub fn sync(repos: Vec<repo::Repo>, _clean_only: &bool) -> Result<(), Error> {
-    return Err(Error::new(ErrorKind::Other, "not implemented"));
+pub fn sync(_repos: Vec<repo::Repo>, _clean_only: &bool) -> Result<()> {
+    //  If dir doesn't exist, run git clone.
+    //  If dir DOES exist, but missing from config, rm the dir.
+    return Err(anyhow!("not implemented"));
 }
 
-pub fn init(p: Option<PathBuf>) -> Result<PathBuf, Error> {
-    let r = root(p);
-    if let Err(e) = fs::create_dir_all(r.clone()) {
-        return Err(e);
-    }
-    Ok(r)
+pub fn init(p: Option<PathBuf>) -> Result<PathBuf> {
+    let binding = root(p);
+    let r = binding.as_path();
+    fs::create_dir_all(r)?;
+    Ok(r.to_path_buf())
 }
 
 fn root(p: Option<PathBuf>) -> PathBuf {

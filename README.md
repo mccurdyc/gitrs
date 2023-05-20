@@ -5,6 +5,10 @@ A simple, opinionated, tool, written in Rust, for declaretively managing Git
 repos on your machine.
 <!-- vale on -->
 
+"simple" - limited in what it supports. For example, won't support running commands
+against repos.
+"opinionated" - similar to Go and the old `$GOPATH` is how repos are stored.
+
 ## Usage
 
 Global arguments
@@ -18,23 +22,7 @@ Subcommands
 - `sync` - reads the config file and adds or removes repos from the filesystem
 to match the state of the config.
 
-## `.gitrs.yaml` config file
-
-```yaml
-metadata:
- version: v1beta
- root: /home/user/src
-repos:
-- name: github.com/mccurdyc/gitrs
-  # could we do something like go and abstract this away?
-  # https://stackoverflow.com/questions/27500861/whats-the-proper-way-to-go-get-a-private-repository#27501039
-  # https://cs.opensource.google/go/go/+/refs/heads/master:src/cmd/go/internal/vcs/vcs.go%3Bdrc=3ee12d5702be8e2e13e256d6dec28c6464e0a7e5%3Bl=282
-  # https://cs.opensource.google/go/go/+/refs/heads/master:src/cmd/go/internal/vcs/vcs.go%3Bl=300%3Bdrc=3ee12d5702be8e2e13e256d6dec28c6464e0a7e5
-  pin: <true|false>
-  remove: <true|false>
-```
-
-## `.gitrslock.yaml` file
+## `$GITRS_ROOT/.gitrs.yaml` config file
 
 ```yaml
 metadata:
@@ -43,15 +31,15 @@ metadata:
  last_sync: <timestamp>
 repos:
 - name: github.com/mccurdyc/gitrs
+  pin: <true|default:false>
   sha: <sha>
-  last_fetch: <timestamp>
 ```
 
 ## Design goals
 
 - Do one thing well: clone, update or remove repos from the filesystem.
   - Won't support running commands against cloned repos.
-- Only supports SSH cloning, [similar to Go](https://cs.opensource.google/go/go/+/refs/heads/master:src/cmd/go/internal/vcs/vcs.go%3Bl=102%3Bdrc=3ee12d5702be8e2e13e256d6dec28c6464e0a7e5).
+- Only supports SSH cloning, [similar to Go](https://cs.opensource.google/go/go/+/refs/heads/master:src/cmd/go/internal/get/get.go%3Bdrc=91b8cc0dfaae12af1a89e2b7ad3da10728883ee1%3Bl=423).
 - Opinionated file structure. For example, `$GOPATH`. But you can specify a `GITRS_ROOT`.
 - You could have multiple "roots" for different uses.
 For example, `$HOME/{work,personal}` with separate gitrs configs.
