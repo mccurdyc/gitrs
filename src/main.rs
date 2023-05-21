@@ -1,6 +1,6 @@
 use anyhow::Error;
 use clap::{Parser, Subcommand};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub mod config;
 pub mod fs;
@@ -47,7 +47,10 @@ fn main() -> anyhow::Result<()> {
 
 fn run(c: Cli) -> anyhow::Result<(), Error> {
     let r = fs::init(c.root)?;
-    let cfg = config::Config::new(r).load(&Path::new(".gitrs.yaml"))?;
+    let mut cfg_path = r.clone();
+    cfg_path.push(".gitrs.yaml");
+
+    let cfg = config::Config::new(r).load(cfg_path)?;
 
     match &c.command {
         Commands::Add { repo, pin } => cfg.add(repo, pin).expect("couldn't add repo '{repo:?}"),

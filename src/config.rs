@@ -1,9 +1,9 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_yaml;
-use std::fs::OpenOptions;
-use std::io::prelude::*;
-use std::path::{Path, PathBuf};
+use std::fs;
+use std::fs::File;
+use std::path::PathBuf;
 
 use crate::repo;
 
@@ -35,26 +35,21 @@ impl Config {
     }
 
     /// load loads or creates and then loads a config file.
-    pub fn load(&mut self, f: &Path) -> Result<Self> {
-        let mut bind = self.metadata.root.clone();
-        bind.push(f);
-        let p = bind.as_path();
-
-        // if the config file doesn't exist, create it.
-        let mut f = OpenOptions::new().read(true).open(p).unwrap_or_else(|_| {
-            // TODO: could these panics be propogated up instead?
-            let mut f = std::fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .open(p)
-                .expect("Couldn't open file");
-            serde_yaml::to_writer(&mut f, self).expect("Couldn't write to file");
-            f
-        });
-
-        f.read_to_end(&mut self.file_contents)?;
-        let cfg: Config = serde_yaml::from_reader(f)?;
+    pub fn load(&mut self, p: PathBuf) -> Result<Config> {
+        let v = self.read_or_create(p)?;
+        let cfg: Config = serde_yaml::from_slice(v.as_slice())?;
         Ok(cfg)
+    }
+
+    fn read_or_create(&mut self, p: PathBuf) -> Result<Vec<u8>> {
+        if !p.exists() {
+            let f = File::create(p.as_path())
+                .with_context(|| format!("Failed to create file {}", p.display()))?;
+            serde_yaml::to_writer(f, &self)?; // serialize
+        }
+
+        let d = fs::read(p)?;
+        Ok(d)
     }
 
     /// add adds a repo to the config and indicates whether or not the repo
@@ -81,5 +76,25 @@ impl Config {
     pub fn list_repos(&self) -> Result<Vec<repo::Repo>> {
         // TODO - implement
         return Err(anyhow!("not implemented"));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new() {
+        let got = Config::new(PathBuf::from("/foo"));
+
+        assert_eq!(got.metadata.root, PathBuf::from("/foo"));
+        assert_eq!(got.file_contents.len(), 0);
+        assert_eq!(got.repos.len(), 0);
+        assert_eq!(got.metadata.version, String::from(CONFIG_VERSION));
+    }
+
+    #[test]
+    fn test_load() {
+        let _got = Config::new(PathBuf::from("/foo"));
     }
 }
