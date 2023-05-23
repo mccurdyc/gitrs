@@ -13,3 +13,4 @@ git2 = "0.17.1"
 home = "0.5.5"
 serde = { version = "1.0.163", features = ["derive"] }
 serde_yaml = "0.9.21"
+tempfile = "3.5.0"

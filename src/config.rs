@@ -9,13 +9,13 @@ use crate::repo;
 
 const CONFIG_VERSION: &str = "v1beta";
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 struct Metadata {
     version: String,
     root: PathBuf,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct Config {
     file_contents: Vec<u8>,
     metadata: Metadata,
@@ -82,6 +82,7 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
 
     #[test]
     fn test_new() {
@@ -94,7 +95,34 @@ mod tests {
     }
 
     #[test]
-    fn test_load() {
-        let _got = Config::new(PathBuf::from("/foo"));
+    fn test_load_doesnt_exist_yet() {
+        let root = tempdir().expect("Failed to create tempdir");
+        // Note: use of path().to_path_buf() is to prevent moves.
+        // I copied this pattern from tempdir's tests - https://github.com/Stebalien/tempfile/blob/a2b45b3363ddf31efcd4920462d6ec3e0ef9a909/tests/tempdir.rs#L72
+        let p = root.path().to_path_buf().join(".gitrs.yaml");
+
+        let got = Config::new(root.path().to_path_buf())
+            .load(p)
+            .expect("expected config");
+
+        // dir and file should exist now
+        assert_eq!(root.path().exists(), true);
+        assert_eq!(root.path().join(".gitrs.yaml").exists(), true);
+
+        // should be the default config values
+        let want = Config::new(root.path().to_path_buf());
+        assert_eq!(got, want);
+
+        // By closing the `TempDir` explicitly, we can check that it has
+        // been deleted successfully. If we don't close it explicitly,
+        // the directory will still be deleted when `dir` goes out
+        // of scope, but we won't know whether deleting the directory
+        // succeeded.
+        root.close().expect("Failed to close tempdir");
+    }
+
+    #[test]
+    fn test_load_already_exists() {
+        assert_eq!(true, false);
     }
 }
