@@ -72,3 +72,7 @@ For example, `$HOME/{work,personal}` with separate gitrs configs.
 ## Inspiration
 
 See [similar projects](./docs/inspiration.md).
+
+## LICENSE
+
+See [LICENSE.md](./LICENSE.md).
