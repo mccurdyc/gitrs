@@ -17,7 +17,6 @@ struct Metadata {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct Config {
-    file_contents: Vec<u8>,
     metadata: Metadata,
     repos: Vec<repo::Repo>,
 }
@@ -25,7 +24,6 @@ pub struct Config {
 impl Config {
     pub fn new(r: PathBuf) -> Self {
         Config {
-            file_contents: Vec::new(),
             metadata: Metadata {
                 version: CONFIG_VERSION.to_owned(),
                 root: r,
@@ -89,7 +87,6 @@ mod tests {
         let got = Config::new(PathBuf::from("/foo"));
 
         assert_eq!(got.metadata.root, PathBuf::from("/foo"));
-        assert_eq!(got.file_contents.len(), 0);
         assert_eq!(got.repos.len(), 0);
         assert_eq!(got.metadata.version, String::from(CONFIG_VERSION));
     }
