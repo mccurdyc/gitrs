@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_yaml;
-use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 
@@ -16,12 +15,13 @@ struct Metadata {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct Config {
+pub struct Config<'a> {
     metadata: Metadata,
-    repos: Vec<repo::Repo>,
+    #[serde(borrow)]
+    repos: Vec<repo::Repo<'a>>,
 }
 
-impl Config {
+impl<'a> Config<'a> {
     pub fn new(r: PathBuf) -> Self {
         Config {
             metadata: Metadata {
@@ -33,21 +33,13 @@ impl Config {
     }
 
     /// load loads or creates and then loads a config file.
-    pub fn load(&mut self, p: PathBuf) -> Result<Config> {
-        let v = self.read_or_create(p)?;
-        let cfg: Config = serde_yaml::from_slice(v.as_slice())?;
-        Ok(cfg)
-    }
-
-    fn read_or_create(&mut self, p: PathBuf) -> Result<Vec<u8>> {
+    pub fn load(&mut self, p: PathBuf) -> Result<()> {
         if !p.exists() {
             let f = File::create(p.as_path())
                 .with_context(|| format!("Failed to create file {}", p.display()))?;
             serde_yaml::to_writer(f, &self)?; // serialize
         }
-
-        let d = fs::read(p)?;
-        Ok(d)
+        Ok(())
     }
 
     /// add adds a repo to the config and indicates whether or not the repo
@@ -80,6 +72,7 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::repo;
     use tempfile::tempdir;
 
     #[test]
@@ -98,9 +91,8 @@ mod tests {
         // I copied this pattern from tempdir's tests - https://github.com/Stebalien/tempfile/blob/a2b45b3363ddf31efcd4920462d6ec3e0ef9a909/tests/tempdir.rs#L72
         let p = root.path().to_path_buf().join(".gitrs.yaml");
 
-        let got = Config::new(root.path().to_path_buf())
-            .load(p)
-            .expect("expected config");
+        let mut got = Config::new(root.path().to_path_buf());
+        got.load(p).expect("expected config");
 
         // dir and file should exist now
         assert_eq!(root.path().exists(), true);
@@ -120,6 +112,35 @@ mod tests {
 
     #[test]
     fn test_load_already_exists() {
-        assert_eq!(true, false);
+        let root = tempdir().expect("Failed to create tempdir");
+        // Note: use of path().to_path_buf() is to prevent moves.
+        // I copied this pattern from tempdir's tests - https://github.com/Stebalien/tempfile/blob/a2b45b3363ddf31efcd4920462d6ec3e0ef9a909/tests/tempdir.rs#L72
+        let p = root.path().to_path_buf().join(".gitrs.yaml");
+        let f = File::create(p).expect("Failed to create file");
+        serde_yaml::to_writer(
+            f,
+            &Config {
+                metadata: Metadata {
+                    version: "hello".to_string(),
+                    root: PathBuf::from("/foo"),
+                },
+                repos: vec![
+                    repo::Repo::new().name("a").pin(false).sha("sha").to_owned(),
+                    repo::Repo::new()
+                        .name("b")
+                        .pin(true)
+                        .sha("shasha")
+                        .to_owned(),
+                ],
+            },
+        )
+        .expect("Failed to serialize Config");
+
+        // By closing the `TempDir` explicitly, we can check that it has
+        // been deleted successfully. If we don't close it explicitly,
+        // the directory will still be deleted when `dir` goes out
+        // of scope, but we won't know whether deleting the directory
+        // succeeded.
+        root.close().expect("Failed to close tempdir");
     }
 }
