@@ -47,15 +47,11 @@ fn main() -> anyhow::Result<()> {
 
 fn run(c: Cli) -> anyhow::Result<(), Error> {
     let r = fs::init(c.root)?;
-    let mut cfg_path = r.clone();
-    cfg_path.push(".gitrs.yaml");
-
-    let mut cfg = config::Config::new(r);
-    cfg.load(cfg_path)?;
+    let mut cfg = config::Config::new(r, PathBuf::from(".gitrs.yaml"))?;
 
     match &c.command {
-        Commands::Add { repo, pin } => cfg.add(repo, pin).expect("couldn't add repo '{repo:?}"),
-        Commands::Remove { repo } => cfg.remove(repo).expect("couldn't remove repo '{repo:?}"),
+        Commands::Add { repo, pin } => cfg.add(repo, *pin).expect("couldn't add repo {repo:?}"),
+        Commands::Remove { repo } => cfg.remove(repo).expect("couldn't remove repo {repo:?}"),
         Commands::Sync { clean_only } => {
             let repos = cfg.list_repos()?;
             fs::sync(repos, clean_only).expect("failed to sync repos");
