@@ -44,11 +44,11 @@ impl<'a> Config<'a> {
 
     /// create creates the config file.
     fn create(&mut self) -> Result<()> {
-        create_dir_all(self.metadata.root.as_path())?;
+        create_dir_all(self.metadata.root.as_path()).context("Failed to create dir")?;
 
         if !self.metadata.path.exists() {
             File::create(self.metadata.path.as_path()).context("Failed to create")?;
-            Ok(self.write()?)
+            Ok(self.write().context("Failed to write")?)
         } else {
             Ok(())
         }

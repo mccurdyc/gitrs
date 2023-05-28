@@ -1,4 +1,4 @@
-use anyhow::Error;
+use anyhow::{Context, Error};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -40,7 +40,7 @@ enum Commands {
     },
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<(), Error> {
     let cli = Cli::parse();
     run(cli)
 }
@@ -50,11 +50,17 @@ fn run(c: Cli) -> anyhow::Result<(), Error> {
     let mut cfg = config::Config::new(r, PathBuf::from(".gitrs.yaml"))?;
 
     match &c.command {
-        Commands::Add { repo, pin } => cfg.add(repo, *pin).expect("couldn't add repo {repo:?}"),
-        Commands::Remove { repo } => cfg.remove(repo).expect("couldn't remove repo {repo:?}"),
+        Commands::Add { repo, pin } => {
+            cfg.add(repo, *pin)
+                .with_context(|| format!("failed to add repo: {}", repo))?;
+        }
+        Commands::Remove { repo } => {
+            cfg.remove(repo)
+                .with_context(|| format!("failed to remove repo: {}", repo))?;
+        }
         Commands::Sync { clean_only } => {
             let repos = cfg.list_repos()?;
-            fs::sync(repos, clean_only).expect("failed to sync repos");
+            fs::sync(repos, clean_only).with_context(|| format!("failed to sync repos"))?;
         }
     }
     Ok(())
