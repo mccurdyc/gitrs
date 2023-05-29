@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_yaml;
-use std::fs::{create_dir_all, File};
+use std::fs::{create_dir_all, File, OpenOptions};
 use std::path::PathBuf;
 
 use crate::repo::Repo;
@@ -56,7 +56,11 @@ impl<'a> Config<'a> {
 
     /// write writes the config file.
     fn write(&mut self) -> Result<()> {
-        let f = File::open(self.metadata.path.as_path()).context("Failed to write")?;
+        let f = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(self.metadata.path.as_path())
+            .context("Couldn't open file")?;
         Ok(serde_yaml::to_writer(f, &self)?)
     }
 
