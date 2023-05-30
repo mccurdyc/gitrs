@@ -71,9 +71,9 @@ impl<'a> Config<'a> {
     /// (This statement is a bit of package bleed, consider removing).
     pub fn add(&mut self, repo: &'a str, pin: bool) -> Result<()> {
         let mut binding = Repo::new();
-        let r = binding.name(repo).pin(pin);
+        let r = binding.name(repo)?.pin(pin);
 
-        self.repos.push(*r);
+        self.repos.push(r.to_owned());
         Ok(self.write()?)
     }
 
@@ -161,9 +161,15 @@ mod tests {
                     path: PathBuf::from("/foo/test.yaml"),
                 },
                 repos: vec![
-                    repo::Repo::new().name("a").pin(false).sha("sha").to_owned(),
                     repo::Repo::new()
-                        .name("b")
+                        .name("github.com/org/a")
+                        .expect("test repo name 'a' not working")
+                        .pin(false)
+                        .sha("sha")
+                        .to_owned(),
+                    repo::Repo::new()
+                        .name("github.com/org/b")
+                        .expect("test repo name 'b' not working")
                         .pin(true)
                         .sha("shasha")
                         .to_owned(),
