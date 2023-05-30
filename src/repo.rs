@@ -10,9 +10,8 @@ pub struct Repo<'a> {
     sha: &'a str,
 }
 
-// Modeling after OpenOptions. I did this so that Repo struct fields could change
-// and the new() constructor interface didn't. Although, I think I could take
-// some generic options arguments instead and set those.
+// Modeling after OpenOptions. This is so that Repo struct fields can change, but
+// not affect the new() constructor interface.
 impl<'a> Repo<'a> {
     pub fn new() -> Self {
         Repo {
@@ -60,9 +59,5 @@ impl<'a> Repo<'a> {
 
     pub fn to_owned(&mut self) -> Self {
         self.clone()
-    }
-
-    pub fn validate(&mut self) -> Result<()> {
-        Err(anyhow!("not implemented"))
     }
 }

@@ -1,15 +1,17 @@
 use crate::repo;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use home;
+use std::collections::HashMap;
 use std::{env, fs, path::PathBuf};
 
 const ENV_GITRS_ROOT: &str = "GITRS_ROOT";
 const GITRS_ROOT_DEFAULT: &str = "/src";
 
-pub fn sync(_repos: Vec<repo::Repo>, _clean_only: &bool) -> Result<()> {
+pub fn sync(_repos: HashMap<&str, repo::Repo>, _clean_only: &bool) -> Result<()> {
     //  If dir doesn't exist, run git clone.
     //  If dir DOES exist, but missing from config, rm the dir.
-    return Err(anyhow!("not implemented"));
+    //  TODO - implemented
+    unimplemented!();
 }
 
 pub fn init(p: Option<PathBuf>) -> Result<PathBuf> {

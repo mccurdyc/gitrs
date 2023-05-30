@@ -1,6 +1,7 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_yaml;
+use std::collections::HashMap;
 use std::fs::{create_dir_all, File, OpenOptions};
 use std::path::PathBuf;
 
@@ -20,8 +21,7 @@ struct Metadata {
 pub struct Config<'a> {
     metadata: Metadata,
     #[serde(borrow)]
-    // TODO (mccurdyc) this should probably be a map instead of a Vec.
-    repos: Vec<Repo<'a>>,
+    pub repos: HashMap<&'a str, Repo<'a>>,
 }
 
 impl<'a> Config<'a> {
@@ -34,7 +34,7 @@ impl<'a> Config<'a> {
                 root: r,
                 path: p,
             },
-            repos: Vec::new(),
+            repos: HashMap::new(),
         };
 
         match cfg.create() {
@@ -73,7 +73,7 @@ impl<'a> Config<'a> {
         let mut binding = Repo::new();
         let r = binding.name(repo)?.pin(pin);
 
-        self.repos.push(r.to_owned());
+        self.repos.insert(repo, r.to_owned());
         Ok(self.write()?)
     }
 
@@ -84,13 +84,7 @@ impl<'a> Config<'a> {
     /// (This statement is a bit of package bleed, consider removing).
     pub fn remove(&self, _repo: &String) -> Result<()> {
         // TODO - implement
-        return Err(anyhow!("not implemented"));
-    }
-
-    /// list_repos lists the repositories.
-    pub fn list_repos(&self) -> Result<Vec<Repo>> {
-        // TODO - implement
-        return Err(anyhow!("not implemented"));
+        unimplemented!();
     }
 }
 
@@ -160,20 +154,26 @@ mod tests {
                     root: PathBuf::from("/foo"),
                     path: PathBuf::from("/foo/test.yaml"),
                 },
-                repos: vec![
-                    repo::Repo::new()
-                        .name("github.com/org/a")
-                        .expect("test repo name 'a' not working")
-                        .pin(false)
-                        .sha("sha")
-                        .to_owned(),
-                    repo::Repo::new()
-                        .name("github.com/org/b")
-                        .expect("test repo name 'b' not working")
-                        .pin(true)
-                        .sha("shasha")
-                        .to_owned(),
-                ],
+                repos: HashMap::from([
+                    (
+                        "github.com/org/a",
+                        repo::Repo::new()
+                            .name("github.com/org/a")
+                            .expect("test repo name 'a' not working")
+                            .pin(false)
+                            .sha("sha")
+                            .to_owned(),
+                    ),
+                    (
+                        "github.com/org/b",
+                        repo::Repo::new()
+                            .name("github.com/org/b")
+                            .expect("test repo name 'b' not working")
+                            .pin(true)
+                            .sha("shasha")
+                            .to_owned(),
+                    ),
+                ]),
             },
         )
         .expect("Failed to serialize Config");

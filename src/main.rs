@@ -59,8 +59,7 @@ fn run(c: Cli) -> anyhow::Result<(), Error> {
                 .with_context(|| format!("failed to remove repo: {}", repo))?;
         }
         Commands::Sync { clean_only } => {
-            let repos = cfg.list_repos()?;
-            fs::sync(repos, clean_only).with_context(|| format!("failed to sync repos"))?;
+            fs::sync(cfg.repos, clean_only).with_context(|| format!("failed to sync repos"))?;
         }
     }
     Ok(())
