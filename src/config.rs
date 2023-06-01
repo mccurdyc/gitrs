@@ -21,7 +21,7 @@ struct Metadata {
 pub struct Config<'a> {
     metadata: Metadata,
     #[serde(borrow)]
-    pub repos: HashMap<&'a str, Repo<'a>>,
+    repos: HashMap<&'a str, Repo<'a>>,
 }
 
 impl<'a> Config<'a> {
@@ -85,6 +85,19 @@ impl<'a> Config<'a> {
     pub fn remove(&self, _repo: &String) -> Result<()> {
         // TODO - implement
         unimplemented!();
+    }
+
+    // Naming conventions https://rust-lang.github.io/api-guidelines/naming.html#getter-names-follow-rust-convention-c-getter
+
+    pub fn root(&self) -> PathBuf {
+        self.metadata.root.to_path_buf()
+    }
+
+    pub fn repos(&'a self) -> &HashMap<&'a str, Repo<'a>> {
+        &self.repos
+    }
+    pub fn repos_mut(&mut self) -> &mut HashMap<&'a str, Repo<'a>> {
+        &mut self.repos
     }
 }
 
