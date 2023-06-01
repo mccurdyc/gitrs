@@ -13,35 +13,32 @@ pub fn sync(
     repos: &mut HashMap<&str, repo::Repo>,
     _clean_only: &bool,
 ) -> Result<()> {
-    // loop directories
-    //  If dir doesn't exist, run git clone.
-    //  If dir DOES exist, but missing from config, rm the dir but prompt for input if there are
-    for entry in WalkDir::new(root)
-        .min_depth(3)
+    for entry in WalkDir::new(root.as_path())
+        .min_depth(3) // forces it to look at full paths only
         .max_depth(3)
         .contents_first(true)
     {
-        match entry?.file_name().to_str() {
-            Some(d) => {
-                match d.split_once('/') {
-                    Some(v) => {
-                        let _r = format!("{}", v.1);
-                        // lookup r
-                    }
-                    None => continue,
-                };
+        // If the directory doesn't exist in the config, delete it.
+        // This forces you to declare the repos.
+        let e = entry?;
+        let p = e.path();
+        let f = p.strip_prefix(root.as_path())?;
+        println!("f: {:?}", f);
+
+        // TODO (mccurdyc): consider fetching updates for all repos here.
+        if let Some(s) = f.to_str() {
+            if !repos.contains_key(s) {
+                // TODO (mccurdyc): prompt for input if there are uncommitted changes.
+                fs::remove_dir(p)?;
             }
-            None => continue,
         };
     }
 
-    // loop repos
-    for key in repos.keys() {
-        println!("{key}");
+    for entry in repos.keys() {
+        println!("{entry}");
     }
-    //  changes that haven't been checked in.
-    //  TODO - implemented
-    unimplemented!();
+
+    Ok(())
 }
 
 pub fn init(p: Option<PathBuf>) -> Result<PathBuf> {
