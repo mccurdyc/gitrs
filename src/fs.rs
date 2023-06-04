@@ -1,18 +1,15 @@
 use crate::repo;
 use anyhow::Result;
+use git2::Repository;
 use home;
 use std::collections::HashMap;
-use std::{env, fs, path::PathBuf};
+use std::{env, fs, path::Path, path::PathBuf};
 use walkdir::WalkDir;
 
 const ENV_GITRS_ROOT: &str = "GITRS_ROOT";
 const GITRS_ROOT_DEFAULT: &str = "/src";
 
-pub fn sync(
-    root: PathBuf,
-    repos: &mut HashMap<&str, repo::Repo>,
-    _clean_only: &bool,
-) -> Result<()> {
+pub fn sync(root: PathBuf, repos: &HashMap<String, repo::Repo>, _clean_only: &bool) -> Result<()> {
     for entry in WalkDir::new(root.as_path())
         .min_depth(3) // forces it to look at full paths only
         .max_depth(3)
@@ -33,9 +30,15 @@ pub fn sync(
             }
         };
     }
+    println!("repos: {:?}", repos);
 
-    for entry in repos.keys() {
-        println!("{entry}");
+    // If directory doesn't exist, clone it.
+    for r in repos.values() {
+        println!("r: {:?}", r.get_name());
+
+        if !Path::new(r.get_name()).exists() {
+            Repository::clone(r.get_url(), Path::new(r.get_name()))?;
+        }
     }
 
     Ok(())

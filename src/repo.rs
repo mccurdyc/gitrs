@@ -2,31 +2,35 @@ use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub struct Repo<'a> {
-    name: &'a str,
+pub struct Repo {
+    name: String,
     #[serde(skip_serializing, skip_deserializing)]
     url: String,
     pin: bool,
-    sha: &'a str,
+    sha: String,
 }
 
 // Modeling after OpenOptions. This is so that Repo struct fields can change, but
 // not affect the new() constructor interface.
-impl<'a> Repo<'a> {
+impl Repo {
     pub fn new() -> Self {
         Repo {
-            name: "",
+            name: "".to_owned(),
             url: "".to_owned(),
             pin: false,
-            sha: "",
+            sha: "".to_owned(),
         }
     }
 
-    pub fn name(&mut self, name: &'a str) -> Result<&mut Self> {
-        self.name = name;
-        self.url(name)?;
+    pub fn name(&mut self, name: String) -> Result<&mut Self> {
+        self.name = name.clone();
+        self.url(name.clone())?;
 
         Ok(self)
+    }
+
+    pub fn get_name(&self) -> &str {
+        self.name.as_str()
     }
 
     // url changes the name of the format "github.com/<org>/<name>" to Git SSH
@@ -34,8 +38,8 @@ impl<'a> Repo<'a> {
     //
     // Only supports SSH cloning, [similar to Go](https://cs.opensource.google/go/go/+/refs/heads/master:src/cmd/go/internal/get/get.go%3Bdrc=91b8cc0dfaae12af1a89e2b7ad3da10728883ee1%3Bl=423).
     // https://cs.opensource.google/go/go/+/refs/heads/master:src/cmd/go/internal/vcs/vcs.go%3Bl=301%3Bdrc=7ad92e95b56019083824492fbec5bb07926d8ebd
-    fn url(&mut self, name: &str) -> Result<&mut Self> {
-        let v: Vec<&str> = name.split('/').collect();
+    pub fn url(&mut self, name: String) -> Result<&mut Self> {
+        let v: Vec<&str> = name.as_str().split('/').collect();
 
         if name.contains(':') || name.contains('@') || v.len() != 3 {
             return Err(anyhow!(
@@ -47,12 +51,16 @@ impl<'a> Repo<'a> {
         Ok(self)
     }
 
+    pub fn get_url(&self) -> &str {
+        self.url.as_str()
+    }
+
     pub fn pin(&mut self, pin: bool) -> &mut Self {
         self.pin = pin;
         self
     }
 
-    pub fn sha(&mut self, sha: &'a str) -> &mut Self {
+    pub fn sha(&mut self, sha: String) -> &mut Self {
         self.sha = sha;
         self
     }

@@ -18,17 +18,16 @@ struct Metadata {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct Config<'a> {
+pub struct Config {
     metadata: Metadata,
-    #[serde(borrow)]
-    repos: HashMap<&'a str, Repo<'a>>,
+    repos: HashMap<String, Repo>,
 }
 
-impl<'a> Config<'a> {
+impl Config {
     pub fn new(r: PathBuf, c: PathBuf) -> Result<Self, anyhow::Error> {
         let p = r.join(c);
 
-        let mut cfg = Config {
+        let cfg = Config {
             metadata: Metadata {
                 version: CONFIG_VERSION.to_owned(),
                 root: r,
@@ -37,21 +36,19 @@ impl<'a> Config<'a> {
             repos: HashMap::new(),
         };
 
-        match cfg.create() {
-            _ => Ok(cfg),
-        }
+        Ok(cfg)
     }
 
     /// create creates the config file.
-    fn create(&mut self) -> Result<()> {
+    pub fn create(&mut self) -> Result<Config> {
         create_dir_all(self.metadata.root.as_path()).context("Failed to create dir")?;
 
         if !self.metadata.path.exists() {
             File::create(self.metadata.path.as_path()).context("Failed to create")?;
-            Ok(self.write().context("Failed to write")?)
-        } else {
-            Ok(())
+            self.write().context("Failed to write")?
         }
+
+        self.read()
     }
 
     /// write writes the config file.
@@ -64,14 +61,21 @@ impl<'a> Config<'a> {
         Ok(serde_yaml::to_writer(f, &self)?)
     }
 
+    /// read reads the config file.
+    pub fn read(&self) -> Result<Config> {
+        let f = File::open(self.metadata.path.as_path())?;
+        let cfg: Config = serde_yaml::from_reader(f)?;
+        Ok(cfg)
+    }
+
     /// add adds a repo to the config and indicates whether or not the repo
     /// should be pinned at the first fetched commit sha.
     ///
     /// Pinning will prevent future fs::sync calls from checking for updates.
     /// (This statement is a bit of package bleed, consider removing).
-    pub fn add(&mut self, repo: &'a str, pin: bool) -> Result<()> {
+    pub fn add(&mut self, repo: String, pin: bool) -> Result<()> {
         let mut binding = Repo::new();
-        let r = binding.name(repo)?.pin(pin);
+        let r = binding.name(repo.clone())?.pin(pin);
 
         self.repos.insert(repo, r.to_owned());
         Ok(self.write()?)
@@ -93,10 +97,15 @@ impl<'a> Config<'a> {
         self.metadata.root.to_path_buf()
     }
 
-    pub fn repos(&'a self) -> &HashMap<&'a str, Repo<'a>> {
+    pub fn path(&self) -> PathBuf {
+        self.metadata.path.to_path_buf()
+    }
+
+    pub fn repos(&self) -> &HashMap<String, Repo> {
         &self.repos
     }
-    pub fn repos_mut(&mut self) -> &mut HashMap<&'a str, Repo<'a>> {
+
+    pub fn repos_mut(&mut self) -> &mut HashMap<String, Repo> {
         &mut self.repos
     }
 }
@@ -169,21 +178,21 @@ mod tests {
                 },
                 repos: HashMap::from([
                     (
-                        "github.com/org/a",
+                        "github.com/org/a".to_string(),
                         repo::Repo::new()
-                            .name("github.com/org/a")
+                            .name("github.com/org/a".to_string())
                             .expect("test repo name 'a' not working")
                             .pin(false)
-                            .sha("sha")
+                            .sha("sha".to_string())
                             .to_owned(),
                     ),
                     (
-                        "github.com/org/b",
+                        "github.com/org/b".to_string(),
                         repo::Repo::new()
-                            .name("github.com/org/b")
+                            .name("github.com/org/b".to_string())
                             .expect("test repo name 'b' not working")
                             .pin(true)
-                            .sha("shasha")
+                            .sha("shasha".to_string())
                             .to_owned(),
                     ),
                 ]),
