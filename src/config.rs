@@ -48,11 +48,12 @@ impl Config {
             self.write().context("Failed to write")?
         }
 
-        self.read()
+        self.read(self.path())
     }
 
     /// write writes the config file.
     fn write(&mut self) -> Result<()> {
+        println!("{:?}", self.metadata.path.as_path()); // path gets moved
         let f = OpenOptions::new()
             .write(true)
             .create(true)
@@ -62,9 +63,11 @@ impl Config {
     }
 
     /// read reads the config file.
-    pub fn read(&self) -> Result<Config> {
-        let f = File::open(self.metadata.path.as_path())?;
-        let cfg: Config = serde_yaml::from_reader(f)?;
+    pub fn read(&self, p: PathBuf) -> Result<Config> {
+        let f = File::open(p.clone())?;
+
+        let mut cfg: Config = serde_yaml::from_reader(f)?;
+        cfg.metadata.path = p;
         Ok(cfg)
     }
 
@@ -78,7 +81,7 @@ impl Config {
         let r = binding.name(repo.clone())?.pin(pin);
 
         self.repos.insert(repo, r.to_owned());
-        Ok(self.write()?)
+        self.write()
     }
 
     /// remove removes a repo from the config.

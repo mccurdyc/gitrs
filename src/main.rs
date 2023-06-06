@@ -48,13 +48,10 @@ fn main() -> anyhow::Result<(), Error> {
 fn run(c: Cli) -> anyhow::Result<(), Error> {
     let r = fs::init(c.root)?;
     let mut cfg = config::Config::new(r, PathBuf::from(".gitrs.yaml"))?;
-    // TODO (mccurdyc): the issue with sync is probably that the config isn't loaded.
-    // We run `add` in one instance and that's when `cfg.repos` is populated, but
-    // we don't re-load `cfg.repos` before calling 'remove' or 'sync'.
 
     cfg = match cfg.path().exists() {
-        true => cfg.read()?,
-        false => cfg.create()?,
+        true => cfg.read(cfg.path()).expect("failed to read config"),
+        false => cfg.create().expect("failed to create config"),
     };
 
     match &c.command {
