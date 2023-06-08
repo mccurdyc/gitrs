@@ -46,7 +46,7 @@ fn main() -> anyhow::Result<(), Error> {
 }
 
 fn run(c: Cli) -> anyhow::Result<(), Error> {
-    let r = fs::init(c.root)?;
+    let r = fs::init(c.root).expect("failed to initialize root");
     let mut cfg = config::Config::new(r, PathBuf::from(".gitrs.yaml"))?;
 
     cfg = match cfg.path().exists() {
