@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Repo {
     name: String,
-    #[serde(skip_serializing, skip_deserializing)]
     url: String,
     pin: bool,
     sha: String,

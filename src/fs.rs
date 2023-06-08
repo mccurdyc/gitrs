@@ -1,6 +1,6 @@
 use crate::repo;
-use anyhow::Result;
-use git2::Repository;
+use anyhow::{anyhow, Result};
+use git2::{Cred, RemoteCallbacks};
 use home;
 use std::collections::HashMap;
 use std::{env, fs, path::Path, path::PathBuf};
@@ -20,7 +20,8 @@ pub fn sync(root: PathBuf, repos: &HashMap<String, repo::Repo>, _clean_only: &bo
         let e = entry?;
         let p = e.path();
         let f = p.strip_prefix(root.as_path())?;
-        println!("f: {:?}", f);
+        // TODO: use leveled logging.
+        println!("[DEBUG] - f: {:?}", f);
 
         // TODO (mccurdyc): consider fetching updates for all repos here.
         if let Some(s) = f.to_str() {
@@ -30,18 +31,54 @@ pub fn sync(root: PathBuf, repos: &HashMap<String, repo::Repo>, _clean_only: &bo
             }
         };
     }
-    println!("repos: {:?}", repos);
+    // TODO: use leveled logging.
+    println!("[DEBUG] - repos: {:?}", repos);
 
     // If directory doesn't exist, clone it.
     for r in repos.values() {
-        println!("r: {:?}", r.get_name());
+        // TODO: use leveled logging.
+        println!("[DEBUG] - r: {:?}", r.get_name());
 
         if !Path::new(r.get_name()).exists() {
-            Repository::clone(r.get_url(), Path::new(r.get_name()))?;
+            clone_ssh(r.get_url(), root.join(r.get_name()).as_path())?;
         }
     }
 
     Ok(())
+}
+
+// https://docs.rs/git2/latest/git2/build/struct.RepoBuilder.html
+// TODO: make the SSH params configurable.
+fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
+    let mut callbacks = RemoteCallbacks::new();
+    // TODO: fix this
+    callbacks.credentials(|_url, username_from_url, _allowed_types| {
+        // https://libgit2.org/libgit2/#HEAD/group/credential/git_credential_ssh_key_from_agent
+        Cred::ssh_key(
+            username_from_url.unwrap(),
+            Some(Path::new(&format!(
+                "{}/.ssh/fastly_rsa.pub",
+                env::var("HOME").unwrap()
+            ))),
+            Path::new(&format!("{}/.ssh/fastly_rsa", env::var("HOME").unwrap())),
+            Some(env::var("SSH_PASS").unwrap().as_str()),
+        )
+    });
+
+    // Prepare fetch options.
+    let mut fo = git2::FetchOptions::new();
+    fo.remote_callbacks(callbacks);
+
+    // Prepare builder.
+    let mut builder = git2::build::RepoBuilder::new();
+    builder.fetch_options(fo);
+
+    // Clone the project.
+    println!("[DEBUG] - u: {}", url);
+    match builder.clone(url, dst) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(e)),
+    }
 }
 
 pub fn init(p: Option<PathBuf>) -> Result<PathBuf> {
