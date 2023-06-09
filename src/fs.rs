@@ -39,7 +39,7 @@ pub fn sync(root: PathBuf, repos: &HashMap<String, repo::Repo>, _clean_only: &bo
         // TODO: use leveled logging.
         println!("[DEBUG] - r: {:?}", r.get_name());
 
-        if !Path::new(r.get_name()).exists() {
+        if !root.join(Path::new(r.get_name())).exists() {
             clone_ssh(r.get_url(), root.join(r.get_name()).as_path())?;
         }
     }
