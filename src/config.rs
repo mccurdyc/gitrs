@@ -52,7 +52,7 @@ impl Config {
     }
 
     /// write writes the config file.
-    fn write(&mut self) -> Result<()> {
+    fn write(&self) -> Result<()> {
         println!("{:?}", self.metadata.path.as_path()); // path gets moved
         let f = OpenOptions::new()
             .write(true)
@@ -89,9 +89,9 @@ impl Config {
     /// Removing a repo from the config will indicate future fs::sync calls
     /// to ensure the repo directory is removed from the GITRS_ROOT directory.
     /// (This statement is a bit of package bleed, consider removing).
-    pub fn remove(&self, _repo: &String) -> Result<()> {
-        // TODO - implement
-        unimplemented!();
+    pub fn remove(&mut self, repo: String) -> Result<()> {
+        self.repos.remove(&repo);
+        self.write()
     }
 
     // Naming conventions https://rust-lang.github.io/api-guidelines/naming.html#getter-names-follow-rust-convention-c-getter

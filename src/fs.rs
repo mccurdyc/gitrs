@@ -27,7 +27,7 @@ pub fn sync(root: PathBuf, repos: &HashMap<String, repo::Repo>, _clean_only: &bo
         if let Some(s) = f.to_str() {
             if !repos.contains_key(s) {
                 // TODO (mccurdyc): prompt for input if there are uncommitted changes.
-                fs::remove_dir(p)?;
+                fs::remove_dir_all(p)?;
             }
         };
     }
@@ -39,7 +39,7 @@ pub fn sync(root: PathBuf, repos: &HashMap<String, repo::Repo>, _clean_only: &bo
         // TODO: use leveled logging.
         println!("[DEBUG] - r: {:?}", r.get_name());
 
-        if !Path::new(r.get_name()).exists() {
+        if !root.join(r.get_name()).exists() {
             clone_ssh(r.get_url(), root.join(r.get_name()).as_path())?;
         }
     }

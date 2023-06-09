@@ -60,7 +60,7 @@ fn run(c: Cli) -> anyhow::Result<(), Error> {
                 .with_context(|| format!("failed to add repo: {}", repo))?;
         }
         Commands::Remove { repo } => {
-            cfg.remove(repo)
+            cfg.remove(repo.to_string())
                 .with_context(|| format!("failed to remove repo: {}", repo))?;
         }
         Commands::Sync { clean_only } => {
