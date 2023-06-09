@@ -69,6 +69,20 @@ For example, `$HOME/{work,personal}` with separate gitrs configs.
   remote updates need fetched.
 - [ ] (TODO) Nix package
 
+## Adoption
+
+- I'm still considering whether or not I want to `add` to support multiple repos.
+
+```bash
+mv src/ src.bak/
+
+for d in ~/src.bak/github.com/org/*; do
+  gitrs add $(echo ${d##*src.bak/})
+done
+
+gitrs sync
+```
+
 ## Inspiration
 
 See [similar projects](./docs/inspiration.md).
