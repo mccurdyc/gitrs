@@ -1,5 +1,7 @@
 use anyhow::{Context, Error};
 use clap::{Parser, Subcommand};
+extern crate log;
+use env_logger;
 use std::path::PathBuf;
 
 pub mod config;
@@ -41,6 +43,8 @@ enum Commands {
 }
 
 fn main() -> anyhow::Result<(), Error> {
+    env_logger::init();
+
     let cli = Cli::parse();
     run(cli)
 }

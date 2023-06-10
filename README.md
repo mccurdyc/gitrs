@@ -22,6 +22,11 @@ Subcommands
 - `sync` - reads the config file and adds or removes repos from the filesystem
 to match the state of the config.
 
+## Logging
+
+gitrs uses standard leveled logs, so `RUST_LOG=<debug,info,warn,error>; gitrs ...`
+reports the requested logs.
+
 ## `$GITRS_ROOT/.gitrs.yaml` config file
 
 ```yaml

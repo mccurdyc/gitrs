@@ -9,8 +9,10 @@ proc-macro = true
 [dependencies]
 anyhow = "1.0.71"
 clap = { version = "4.2.7", features = ["derive"] }
+env_logger = "0.10.0"
 git2 = "0.17.1"
 home = "0.5.5"
+log = { version = "0.4.18", features = ["serde"] }
 serde = { version = "1.0.163", features = ["derive"] }
 serde_yaml = "0.9.21"
 tempfile = "3.5.0"

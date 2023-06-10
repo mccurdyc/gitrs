@@ -2,6 +2,7 @@ use crate::repo;
 use anyhow::{anyhow, Result};
 use git2::{Cred, RemoteCallbacks};
 use home;
+use log::debug;
 use std::collections::HashMap;
 use std::{env, fs, path::Path, path::PathBuf};
 use walkdir::WalkDir;
@@ -18,26 +19,24 @@ pub fn sync(root: PathBuf, repos: &HashMap<String, repo::Repo>, _clean_only: &bo
         // If the directory doesn't exist in the config, delete it.
         // This forces you to declare the repos.
         let e = entry?;
-        let p = e.path();
-        let f = p.strip_prefix(root.as_path())?;
-        // TODO: use leveled logging.
-        println!("[DEBUG] - f: {:?}", f);
+        let d = e.path();
+        let f = d.strip_prefix(root.as_path())?;
+        debug!("Using directory: {:?}", d);
 
         // TODO (mccurdyc): consider fetching updates for all repos here.
         if let Some(s) = f.to_str() {
             if !repos.contains_key(s) {
                 // TODO (mccurdyc): prompt for input if there are uncommitted changes.
-                fs::remove_dir_all(p)?;
+                fs::remove_dir_all(d)?;
             }
         };
     }
-    // TODO: use leveled logging.
-    println!("[DEBUG] - repos: {:?}", repos);
+
+    debug!("Looping repositories: {:?}", repos);
 
     // If directory doesn't exist, clone it.
     for r in repos.values() {
-        // TODO: use leveled logging.
-        println!("[DEBUG] - r: {:?}", r.get_name());
+        debug!("On repository: {:?}", r.get_name());
 
         if !root.join(r.get_name()).exists() {
             clone_ssh(r.get_url(), root.join(r.get_name()).as_path())?;
@@ -74,7 +73,7 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
     builder.fetch_options(fo);
 
     // Clone the project.
-    println!("[DEBUG] - u: {}", url);
+    debug!("Using clone url: {}", url);
     match builder.clone(url, dst) {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(e)),
@@ -84,7 +83,7 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
 pub fn init(p: Option<PathBuf>) -> Result<PathBuf> {
     let binding = root(p);
     let r = binding.as_path();
-    println!("[DEBUG] - root: {:?}", r);
+    debug!("Initializing root: {:?}", r);
     fs::create_dir_all(r)?;
     Ok(r.to_path_buf())
 }

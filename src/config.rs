@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use log::info;
 use serde::{Deserialize, Serialize};
 use serde_yaml;
 use std::collections::HashMap;
@@ -53,7 +54,7 @@ impl Config {
 
     /// write writes the config file.
     fn write(&self) -> Result<()> {
-        println!("{:?}", self.metadata.path.as_path()); // path gets moved
+        info!("config file: {:?}", self.metadata.path.as_path()); // path gets moved
         let f = OpenOptions::new()
             .write(true)
             .create(true)
