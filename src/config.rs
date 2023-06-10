@@ -45,10 +45,12 @@ impl Config {
         create_dir_all(self.metadata.root.as_path()).context("Failed to create dir")?;
 
         if !self.metadata.path.exists() {
+            debug!("Creating config {:?}", self.path());
             File::create(self.metadata.path.as_path()).context("Failed to create")?;
             self.write().context("Failed to write")?
         }
 
+        debug!("Reading config {:?}", self.path());
         self.read(self.path())
     }
 
@@ -122,9 +124,49 @@ impl Config {
 mod tests {
     use super::*;
     use crate::repo;
-    use tempfile::tempdir;
+    use tempfile::{tempdir, TempDir};
     extern crate log;
     use env_logger;
+
+    fn setup() -> TempDir {
+        // https://github.com/rust-cli/env_logger/blob/19e92ece73472ca3a0269c61c4f44399c6ea2366/examples/in_tests.rs#L21
+        let _ = env_logger::builder()
+            // Include all events in tests
+            .filter_level(log::LevelFilter::max())
+            // Ensure events are captured by `cargo test`
+            .is_test(true)
+            // Ignore errors initializing the logger if tests race to configure it
+            .try_init();
+
+        tempdir().expect("Failed to create tempdir")
+    }
+
+    fn create_test_cfg(root: &TempDir) -> Config {
+        // Note: use of path().to_path_buf() is to prevent moves.
+        // I copied this pattern from tempdir's tests - https://github.com/Stebalien/tempfile/blob/a2b45b3363ddf31efcd4920462d6ec3e0ef9a909/tests/tempdir.rs#L72
+        // TODO: this is where the bug is. This reset Configs.
+        let mut got = Config::new(
+            root.path().to_path_buf(),
+            root.path().to_path_buf().join("test.yaml"),
+        )
+        .expect("expected successful creation of got value");
+
+        got.create().expect("expected to create test.yaml");
+
+        assert_eq!(root.path().exists(), true);
+        assert_eq!(root.path().join("test.yaml").exists(), true);
+
+        got
+    }
+
+    fn cleanup(root: TempDir) {
+        // By closing the `TempDir` explicitly, we can check that it has
+        // been deleted successfully. If we don't close it explicitly,
+        // the directory will still be deleted when `dir` goes out
+        // of scope, but we won't know whether deleting the directory
+        // succeeded.
+        root.close().expect("Failed to close tempdir");
+    }
 
     #[test]
     fn test_new() {
@@ -139,20 +181,8 @@ mod tests {
 
     #[test]
     fn test_new_doesnt_exist_yet() {
-        let root = tempdir().expect("Failed to create tempdir");
-        // Note: use of path().to_path_buf() is to prevent moves.
-        // I copied this pattern from tempdir's tests - https://github.com/Stebalien/tempfile/blob/a2b45b3363ddf31efcd4920462d6ec3e0ef9a909/tests/tempdir.rs#L72
-        let mut got = Config::new(
-            root.path().to_path_buf(),
-            root.path().to_path_buf().join("test.yaml"),
-        )
-        .expect("expected successful creation of got value");
-
-        got.create().expect("expected to create test.yaml");
-
-        // dir and file should exist now
-        assert_eq!(root.path().exists(), true);
-        assert_eq!(root.path().join("test.yaml").exists(), true);
+        let root = setup();
+        let got = create_test_cfg(&root);
 
         // should be the default config values
         let want = Config::new(
@@ -162,79 +192,58 @@ mod tests {
         .expect("expected successful creation of want value");
 
         assert_eq!(got, want);
-
-        // By closing the `TempDir` explicitly, we can check that it has
-        // been deleted successfully. If we don't close it explicitly,
-        // the directory will still be deleted when `dir` goes out
-        // of scope, but we won't know whether deleting the directory
-        // succeeded.
-        root.close().expect("Failed to close tempdir");
     }
 
     #[test]
     fn test_new_already_exists() {
-        let root = tempdir().expect("Failed to create tempdir");
-        // Note: use of path().to_path_buf() is to prevent moves.
-        // I copied this pattern from tempdir's tests - https://github.com/Stebalien/tempfile/blob/a2b45b3363ddf31efcd4920462d6ec3e0ef9a909/tests/tempdir.rs#L72
-        let p = root.path().to_path_buf().join("test.yaml");
-        let f = File::create(p).expect("Failed to create file");
-        serde_yaml::to_writer(
-            f,
-            &Config {
-                metadata: Metadata {
-                    version: "hello".to_string(),
-                    root: PathBuf::from("/foo"),
-                    path: PathBuf::from("/foo/test.yaml"),
-                },
-                repos: HashMap::from([
-                    (
-                        "github.com/org/a".to_string(),
-                        repo::Repo::new()
-                            .name("github.com/org/a".to_string())
-                            .expect("test repo name 'a' not working")
-                            .pin(false)
-                            .sha("sha".to_string())
-                            .to_owned(),
-                    ),
-                    (
-                        "github.com/org/b".to_string(),
-                        repo::Repo::new()
-                            .name("github.com/org/b".to_string())
-                            .expect("test repo name 'b' not working")
-                            .pin(true)
-                            .sha("shasha".to_string())
-                            .to_owned(),
-                    ),
-                ]),
-            },
-        )
-        .expect("Failed to serialize Config");
+        let root = setup();
+        let mut first = create_test_cfg(&root);
 
-        // By closing the `TempDir` explicitly, we can check that it has
-        // been deleted successfully. If we don't close it explicitly,
-        // the directory will still be deleted when `dir` goes out
-        // of scope, but we won't know whether deleting the directory
-        // succeeded.
-        root.close().expect("Failed to close tempdir");
+        let r = first.add("github.com/a/a".to_string(), false);
+
+        assert_eq!(r.err().is_none(), true);
+        assert_eq!(first.repos().len(), 1);
+        assert_eq!(
+            first.repos().to_owned(),
+            HashMap::from([(
+                "github.com/a/a".to_string(),
+                repo::Repo::new()
+                    .name("github.com/a/a".to_string())
+                    .expect("name failed")
+                    .url("github.com/a/a".to_string())
+                    .expect("url failed")
+                    .pin(false)
+                    .sha("".to_string())
+                    .to_owned()
+            )])
+        );
+
+        let second = first.create().expect("failed to create second config");
+        assert_eq!(second.repos().len(), 1);
+        assert_eq!(
+            second.repos().to_owned(),
+            HashMap::from([(
+                "github.com/a/a".to_string(),
+                repo::Repo::new()
+                    .name("github.com/a/a".to_string())
+                    .expect("name failed")
+                    .url("github.com/a/a".to_string())
+                    .expect("url failed")
+                    .pin(false)
+                    .sha("".to_string())
+                    .to_owned()
+            )])
+        );
+
+        cleanup(root)
     }
 
     #[test]
-    fn test_add_doesnt_exist_yet() {
-        env_logger::init();
-
-        let root = tempdir().expect("Failed to create tempdir");
-        // Note: use of path().to_path_buf() is to prevent moves.
-        // I copied this pattern from tempdir's tests - https://github.com/Stebalien/tempfile/blob/a2b45b3363ddf31efcd4920462d6ec3e0ef9a909/tests/tempdir.rs#L72
-        let mut got = Config::new(
-            root.path().to_path_buf(),
-            root.path().to_path_buf().join("test.yaml"),
-        )
-        .expect("expected successful creation of got value");
-
-        got.create().expect("expected to create test.yaml");
+    fn test_add() {
+        let root = setup();
+        let mut got = create_test_cfg(&root);
 
         let r = got.add("github.com/a/a".to_string(), false);
-
         assert_eq!(r.err().is_none(), true);
         assert_eq!(got.repos().len(), 1);
         assert_eq!(
@@ -252,11 +261,91 @@ mod tests {
             )])
         );
 
-        // By closing the `TempDir` explicitly, we can check that it has
-        // been deleted successfully. If we don't close it explicitly,
-        // the directory will still be deleted when `dir` goes out
-        // of scope, but we won't know whether deleting the directory
-        // succeeded.
-        root.close().expect("Failed to close tempdir");
+        // Try adding duplicate
+        let r = got.add("github.com/a/a".to_string(), false);
+        assert_eq!(r.err().is_none(), true);
+        assert_eq!(
+            got.repos().to_owned(),
+            HashMap::from([(
+                "github.com/a/a".to_string(),
+                repo::Repo::new()
+                    .name("github.com/a/a".to_string())
+                    .expect("name failed")
+                    .url("github.com/a/a".to_string())
+                    .expect("url failed")
+                    .pin(false)
+                    .sha("".to_string())
+                    .to_owned()
+            )])
+        );
+
+        let r = got.add("github.com/b/b".to_string(), false);
+        assert_eq!(r.err().is_none(), true);
+        assert_eq!(
+            got.repos().to_owned(),
+            HashMap::from([
+                (
+                    "github.com/a/a".to_string(),
+                    repo::Repo::new()
+                        .name("github.com/a/a".to_string())
+                        .expect("name failed")
+                        .url("github.com/a/a".to_string())
+                        .expect("url failed")
+                        .pin(false)
+                        .sha("".to_string())
+                        .to_owned()
+                ),
+                (
+                    "github.com/b/b".to_string(),
+                    repo::Repo::new()
+                        .name("github.com/b/b".to_string())
+                        .expect("name failed")
+                        .url("github.com/b/b".to_string())
+                        .expect("url failed")
+                        .pin(false)
+                        .sha("".to_string())
+                        .to_owned()
+                )
+            ])
+        );
+
+        cleanup(root);
+    }
+
+    #[test]
+    fn test_remove() {
+        let root = setup();
+        let mut got = create_test_cfg(&root);
+
+        let r = got.add("github.com/a/a".to_string(), false);
+        assert_eq!(r.err().is_none(), true);
+        assert_eq!(got.repos().len(), 1);
+        assert_eq!(
+            got.repos().to_owned(),
+            HashMap::from([(
+                "github.com/a/a".to_string(),
+                repo::Repo::new()
+                    .name("github.com/a/a".to_string())
+                    .expect("name failed")
+                    .url("github.com/a/a".to_string())
+                    .expect("url failed")
+                    .pin(false)
+                    .sha("".to_string())
+                    .to_owned()
+            )])
+        );
+
+        let r = got.remove("github.com/a/a".to_string());
+        assert_eq!(r.err().is_none(), true);
+        assert_eq!(got.repos().len(), 0);
+        assert_eq!(got.repos().to_owned(), HashMap::new());
+
+        // Try removing twice
+        let r = got.remove("github.com/a/a".to_string());
+        assert_eq!(r.err().is_none(), true);
+        assert_eq!(got.repos().len(), 0);
+        assert_eq!(got.repos().to_owned(), HashMap::new());
+
+        cleanup(root);
     }
 }
