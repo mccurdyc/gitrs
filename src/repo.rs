@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use log::debug;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -40,6 +41,7 @@ impl Repo {
     pub fn url(&mut self, name: String) -> Result<&mut Self> {
         let v: Vec<&str> = name.as_str().split('/').collect();
 
+        debug!("Split repo vec: {:?}", v);
         if name.contains(':') || name.contains('@') || v.len() != 3 {
             return Err(anyhow!(
                 "Invalid repo name: name should be of the format <host>/<org>/<repo>"

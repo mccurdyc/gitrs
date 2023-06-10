@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use log::info;
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use serde_yaml;
 use std::collections::HashMap;
@@ -54,7 +54,7 @@ impl Config {
 
     /// write writes the config file.
     fn write(&self) -> Result<()> {
-        info!("config file: {:?}", self.metadata.path.as_path()); // path gets moved
+        info!("Writing to config file: {:?}", self.metadata.path.as_path()); // path gets moved
         let f = OpenOptions::new()
             .write(true)
             .create(true)
@@ -81,6 +81,8 @@ impl Config {
         let mut binding = Repo::new();
         let r = binding.name(repo.clone())?.pin(pin);
 
+        debug!("Adding repo: {}", repo);
+
         self.repos.insert(repo, r.to_owned());
         self.write()
     }
@@ -91,6 +93,8 @@ impl Config {
     /// to ensure the repo directory is removed from the GITRS_ROOT directory.
     /// (This statement is a bit of package bleed, consider removing).
     pub fn remove(&mut self, repo: String) -> Result<()> {
+        debug!("Removing repo: {}", repo);
+
         self.repos.remove(&repo);
         self.write()
     }
@@ -119,6 +123,8 @@ mod tests {
     use super::*;
     use crate::repo;
     use tempfile::tempdir;
+    extern crate log;
+    use env_logger;
 
     #[test]
     fn test_new() {
@@ -132,7 +138,7 @@ mod tests {
     }
 
     #[test]
-    fn test_load_doesnt_exist_yet() {
+    fn test_new_doesnt_exist_yet() {
         let root = tempdir().expect("Failed to create tempdir");
         // Note: use of path().to_path_buf() is to prevent moves.
         // I copied this pattern from tempdir's tests - https://github.com/Stebalien/tempfile/blob/a2b45b3363ddf31efcd4920462d6ec3e0ef9a909/tests/tempdir.rs#L72
@@ -166,7 +172,7 @@ mod tests {
     }
 
     #[test]
-    fn test_load_already_exists() {
+    fn test_new_already_exists() {
         let root = tempdir().expect("Failed to create tempdir");
         // Note: use of path().to_path_buf() is to prevent moves.
         // I copied this pattern from tempdir's tests - https://github.com/Stebalien/tempfile/blob/a2b45b3363ddf31efcd4920462d6ec3e0ef9a909/tests/tempdir.rs#L72
@@ -203,6 +209,48 @@ mod tests {
             },
         )
         .expect("Failed to serialize Config");
+
+        // By closing the `TempDir` explicitly, we can check that it has
+        // been deleted successfully. If we don't close it explicitly,
+        // the directory will still be deleted when `dir` goes out
+        // of scope, but we won't know whether deleting the directory
+        // succeeded.
+        root.close().expect("Failed to close tempdir");
+    }
+
+    #[test]
+    fn test_add_doesnt_exist_yet() {
+        env_logger::init();
+
+        let root = tempdir().expect("Failed to create tempdir");
+        // Note: use of path().to_path_buf() is to prevent moves.
+        // I copied this pattern from tempdir's tests - https://github.com/Stebalien/tempfile/blob/a2b45b3363ddf31efcd4920462d6ec3e0ef9a909/tests/tempdir.rs#L72
+        let mut got = Config::new(
+            root.path().to_path_buf(),
+            root.path().to_path_buf().join("test.yaml"),
+        )
+        .expect("expected successful creation of got value");
+
+        got.create().expect("expected to create test.yaml");
+
+        let r = got.add("github.com/a/a".to_string(), false);
+
+        assert_eq!(r.err().is_none(), true);
+        assert_eq!(got.repos().len(), 1);
+        assert_eq!(
+            got.repos().to_owned(),
+            HashMap::from([(
+                "github.com/a/a".to_string(),
+                repo::Repo::new()
+                    .name("github.com/a/a".to_string())
+                    .expect("name failed")
+                    .url("github.com/a/a".to_string())
+                    .expect("url failed")
+                    .pin(false)
+                    .sha("".to_string())
+                    .to_owned()
+            )])
+        );
 
         // By closing the `TempDir` explicitly, we can check that it has
         // been deleted successfully. If we don't close it explicitly,
