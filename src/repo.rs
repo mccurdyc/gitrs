@@ -70,3 +70,50 @@ impl Repo {
         self.clone()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    extern crate log;
+    use env_logger;
+
+    fn setup() -> Repo {
+        // https://github.com/rust-cli/env_logger/blob/19e92ece73472ca3a0269c61c4f44399c6ea2366/examples/in_tests.rs#L21
+        let _ = env_logger::builder()
+            // Include all events in tests
+            .filter_level(log::LevelFilter::max())
+            // Ensure events are captured by `cargo test`
+            .is_test(true)
+            // Ignore errors initializing the logger if tests race to configure it
+            .try_init();
+
+        Repo::new()
+    }
+
+    #[test]
+    fn test_url_invalid_name() {
+        let mut r = setup();
+
+        // contains ":"
+        let got = r.url("a:a/a/a".to_string());
+        assert_eq!(got.is_err(), true);
+
+        // contains "@"
+        let got = r.url("a@a/a/a".to_string());
+        assert_eq!(got.is_err(), true);
+
+        // <3
+        let got = r.url("a/a".to_string());
+        assert_eq!(got.is_err(), true);
+    }
+
+    #[test]
+    fn test_url_valid_name() {
+        let mut r = setup();
+
+        let got = r
+            .url("github.com/a/a".to_string())
+            .expect("failed to set url");
+        assert_eq!(got.get_url(), "git@github.com:a/a.git");
+    }
+}
