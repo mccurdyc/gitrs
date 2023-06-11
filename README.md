@@ -13,10 +13,9 @@ against repos.
 
 Environment variables
 
-- `SSH_PRIVKEY_PATH` - (default: `$HOME/.ssh/id_rsa`). Path to your SSH private
-key if it is not in the default location.
-- `SSH_PRIVKEY_PASS` - (default: `""`). SSH private key passphrase if it is not
-the default.
+- `GITRS_ROOT` - (default: `$HOME/src`). Path managed by gitrs.
+- `SSH_PRIVKEY_PATH` - (default: `$HOME/.ssh/id_rsa`). Path to your SSH private key.
+- `SSH_PRIVKEY_PASS` - (default: `""`). SSH private key passphrase.
 
 Global arguments
 
