@@ -11,6 +11,13 @@ against repos.
 
 ## Usage
 
+Environment variables
+
+- `SSH_PRIVKAY_PATH` - (default: `$HOME/.ssh/id_rsa`). Path to your SSH private
+key if it is not in the default location.
+- `SSH_PRIVKAY_PASS` - (default: `""`). SSH private key passphrase if it is not
+the default.
+
 Global arguments
 
 - `--root <path>` - specify `$GITRS_ROOT`. Defaults to `$HOME/src`.

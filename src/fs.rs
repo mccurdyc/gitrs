@@ -2,7 +2,7 @@ use crate::repo;
 use anyhow::{anyhow, Result};
 use git2::{Cred, RemoteCallbacks};
 use home;
-use log::debug;
+use log::{debug, error};
 use std::collections::HashMap;
 use std::{env, fs, path::Path, path::PathBuf};
 use walkdir::WalkDir;
@@ -47,20 +47,36 @@ pub fn sync(root: PathBuf, repos: &HashMap<String, repo::Repo>, _clean_only: &bo
 }
 
 // https://docs.rs/git2/latest/git2/build/struct.RepoBuilder.html
-// TODO: make the SSH params configurable.
 fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
     let mut callbacks = RemoteCallbacks::new();
-    // TODO: fix this
-    callbacks.credentials(|_url, username_from_url, _allowed_types| {
+
+    callbacks.credentials(|_url, username, _allowed_types| {
+        let mut ssh_privkey = PathBuf::new();
+        let mut ssh_privkey_pass = String::from("");
+
+        // default
+        if let Some(h) = home::home_dir() {
+            ssh_privkey = h.join(".ssh/id_rsa");
+        }
+
+        // default
+        if let Ok(pw) = env::var("SSH_PRIVKEY_PASS") {
+            ssh_privkey_pass = pw;
+        }
+
+        if !ssh_privkey.exists() {
+            ssh_privkey = PathBuf::from(env::var("SSH_PRIVKEY_PATH").expect("$HOME/.ssh/id_rsa doesn't exists, you must specify an ssh private key path via SSH_PRIVKEY_PATH"));
+            if !ssh_privkey.exists() {
+                error!("$SSH_PRIVKEY_PATH doesn't exists");
+            }
+        }
+
         // https://libgit2.org/libgit2/#HEAD/group/credential/git_credential_ssh_key_from_agent
         Cred::ssh_key(
-            username_from_url.unwrap(),
-            Some(Path::new(&format!(
-                "{}/.ssh/fastly_rsa.pub",
-                env::var("HOME").unwrap()
-            ))),
-            Path::new(&format!("{}/.ssh/fastly_rsa", env::var("HOME").unwrap())),
-            Some(env::var("SSH_PASS").unwrap().as_str()),
+            username.unwrap(),
+            None,
+            &ssh_privkey.as_path(),
+            Some(ssh_privkey_pass.as_str()),
         )
     });
 
