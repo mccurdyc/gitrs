@@ -61,8 +61,6 @@ For example, `$HOME/{work,personal}` with separate gitrs configs.
   - If you run `remove`, it removes the repo from the config file.
   - Then, `sync` clones the repo and/or updates the filesystem to reflect
   the state of the config file.
-- Changes to the config file could trigger a command to run.
-  - Maybe a `watch` or something.
 - Config file (thinking YAML)
   - Supports comments
   - If you don't want to use `gitrs` you can parse for use in another tool
@@ -70,9 +68,7 @@ For example, `$HOME/{work,personal}` with separate gitrs configs.
 
 ## TODO
 
-- [ ] (TODO) lockfile / statefile.
 - [ ] (TODO) `add --pin [<SHA>]` pinning / skipping a repo from being checked for updates.
-- [ ] (TODO) `sync --restore <FILE>` - restore from a gitrs lockfile.
 - [ ] (TODO) `sync --clean` - only remove repositories, doesn't update or clone.
 - [ ] (CONSIDER) `sync --archive` - archives repositories, to `$GITRS_ROOT/.archived`.
 - [ ] (TODO) `watch` - watches the config file for updates and syncs the filesystem.
