@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use std::{env, fs, path::Path, path::PathBuf};
 use walkdir::WalkDir;
 
-const ENV_GITRS_ROOT: &str = "GITRS_ROOT";
 const GITRS_ROOT_DEFAULT: &str = "src";
 
 pub fn sync(root: PathBuf, repos: &HashMap<String, repo::Repo>, _clean_only: &bool) -> Result<()> {
@@ -104,17 +103,72 @@ pub fn init(p: Option<PathBuf>) -> Result<PathBuf> {
     Ok(r.to_path_buf())
 }
 
-// TODO write tests for this function
 fn root(p: Option<PathBuf>) -> PathBuf {
     if let Some(r) = p {
         return r;
     }
 
-    if let Ok(v) = env::var(ENV_GITRS_ROOT) {
-        return PathBuf::from(v);
-    }
-
     // defaults to $HOME/src
     let h = home::home_dir().expect("couldn't get user's HOME directory");
     return h.join(PathBuf::from(GITRS_ROOT_DEFAULT));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::{tempdir, TempDir};
+    extern crate log;
+    use env_logger;
+
+    fn setup() -> TempDir {
+        // https://github.com/rust-cli/env_logger/blob/19e92ece73472ca3a0269c61c4f44399c6ea2366/examples/in_tests.rs#L21
+        let _ = env_logger::builder()
+            // Include all events in tests
+            .filter_level(log::LevelFilter::max())
+            // Ensure events are captured by `cargo test`
+            .is_test(true)
+            // Ignore errors initializing the logger if tests race to configure it
+            .try_init();
+
+        tempdir().expect("Failed to create tempdir")
+    }
+
+    fn cleanup(root: TempDir) {
+        // By closing the `TempDir` explicitly, we can check that it has
+        // been deleted successfully. If we don't close it explicitly,
+        // the directory will still be deleted when `dir` goes out
+        // of scope, but we won't know whether deleting the directory
+        // succeeded.
+        root.close().expect("Failed to close tempdir");
+    }
+
+    #[test]
+    fn test_init_from_input() {
+        let root = setup();
+        let p = root.path().to_path_buf();
+
+        init(Some(p.clone())).expect("init failed");
+        assert_eq!(p.exists(), true);
+
+        cleanup(root);
+    }
+
+    #[test]
+    fn test_init_from_default() {
+        let root = setup();
+        let old_home = env::var("HOME").expect("failed to get old home");
+        env::set_var("HOME", root.path().as_os_str());
+
+        let want = home::home_dir()
+            .expect("couldn't get user's HOME directory")
+            .join("src");
+
+        let got = init(None).expect("init failed");
+
+        assert_eq!(want.exists(), true);
+        assert_eq!(got, want);
+
+        env::set_var("HOME", old_home);
+        cleanup(root);
+    }
 }

@@ -2,6 +2,7 @@ use anyhow::{Context, Error};
 use clap::{Parser, Subcommand};
 extern crate log;
 use env_logger;
+use std::env;
 use std::path::PathBuf;
 
 pub mod config;
@@ -49,7 +50,11 @@ fn main() -> anyhow::Result<(), Error> {
     run(cli)
 }
 
-fn run(c: Cli) -> anyhow::Result<(), Error> {
+fn run(mut c: Cli) -> anyhow::Result<(), Error> {
+    if let Ok(root) = env::var("GITRS_ROOT") {
+        c.root = Some(PathBuf::from(root));
+    }
+
     let r = fs::init(c.root).expect("failed to initialize root");
     let mut cfg = config::Config::new(r, PathBuf::from(".gitrs.yaml"))?;
 
