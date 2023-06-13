@@ -9,7 +9,16 @@ use walkdir::WalkDir;
 
 const GITRS_ROOT_DEFAULT: &str = "src";
 
-pub fn sync(root: PathBuf, repos: &HashMap<String, repo::Repo>, _clean_only: &bool) -> Result<()> {
+pub fn sync(root: PathBuf, repos: &HashMap<String, repo::Repo>, clean_only: &bool) -> Result<()> {
+    sync_with_fn(root, repos, clean_only, clone_ssh)
+}
+
+fn sync_with_fn(
+    root: PathBuf,
+    repos: &HashMap<String, repo::Repo>,
+    _clean_only: &bool,
+    clone_fn: fn(&str, &Path) -> Result<()>,
+) -> Result<()> {
     for entry in WalkDir::new(root.as_path())
         .min_depth(3) // forces it to look at full paths only
         .max_depth(3)
@@ -38,7 +47,7 @@ pub fn sync(root: PathBuf, repos: &HashMap<String, repo::Repo>, _clean_only: &bo
         debug!("On repository: {:?}", r.get_name());
 
         if !root.join(r.get_name()).exists() {
-            clone_ssh(r.get_url(), root.join(r.get_name()).as_path())?;
+            clone_fn(r.get_url(), root.join(r.get_name()).as_path())?;
         }
     }
 
@@ -116,6 +125,7 @@ fn root(p: Option<PathBuf>) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use repo;
     use tempfile::{tempdir, TempDir};
     extern crate log;
     use env_logger;
@@ -170,5 +180,50 @@ mod tests {
 
         env::set_var("HOME", old_home);
         cleanup(root);
+    }
+
+    #[test]
+    fn test_sync_add_repo_dir_doesnt_exists() {
+        let root = setup();
+
+        let got = sync(
+            root.path().to_path_buf(),
+            &HashMap::from([(
+                "github.com/a/a".to_string(),
+                repo::Repo::new()
+                    .name("github.com/a/a".to_string())
+                    .expect("sync name failed")
+                    .url("github.com/a/a".to_string())
+                    .expect("sync url failed")
+                    .pin(false)
+                    .sha("".to_string())
+                    .to_owned(),
+            )]),
+            &false,
+        );
+        assert_eq!(got.is_err(), false);
+
+        cleanup(root);
+    }
+
+    #[test]
+    fn test_sync_add_repo_dir_exists() {
+        let root = setup();
+        cleanup(root);
+        unimplemented!("test_sync");
+    }
+
+    #[test]
+    fn test_sync_remove_repo_dir_exists() {
+        let root = setup();
+        cleanup(root);
+        unimplemented!("test_sync");
+    }
+
+    #[test]
+    fn test_sync_remove_repo_dir_doesnt_exists() {
+        let root = setup();
+        cleanup(root);
+        unimplemented!("test_sync");
     }
 }
