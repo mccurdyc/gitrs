@@ -1,6 +1,14 @@
 [package]
 name = "gitrs"
-version = "0.1.0"
+version = "0.3.0"
+authors = ["mccurdyc"]
+description = "A simple, opinionated, tool, written in Rust, for declaratively managing Git repos on your machine."
+readme = "./README.md"
+homepage = "https://github.com/mccurdyc/gitrs"
+repository = "https://github.com/mccurdyc/gitrs"
+license = "MIT"
+license-file = "./LICENSE.md"
+keywords = ["git", "repositories", "declarative"]
 edition = "2021"
 proc-macro = true
 

@@ -1,7 +1,7 @@
 <!-- vale off -->
 # gitrs 🗂️
 
-A simple, opinionated, tool, written in Rust, for declaretively managing Git
+A simple, opinionated, tool, written in Rust, for declaratively managing Git
 repos on your machine.
 <!-- vale on -->
 
