@@ -1,5 +1,5 @@
 <!-- vale off -->
-# gitrs 🗂️
+![](./docs/imgs/logo.png)
 
 A simple, opinionated, tool, written in Rust, for declaratively managing Git
 repos on your machine.
