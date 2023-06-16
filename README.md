@@ -1,7 +1,10 @@
 <!-- vale off -->
 ![](./docs/imgs/logo.png)
 
-![](https://img.shields.io/github/v/release/mccurdyc/gitrs?label=gitrs&sort=semver)
+[Build Status]: https://img.shields.io/github/actions/workflow/status/mccurdyc/gitrs/rust.yml?branch=main
+[actions]: https://github.com/mccurdyc/gitrs/actions?query=branch%3Amain
+[Latest Version]: https://img.shields.io/crates/v/gitrs.svg
+[crates.io]: https://crates.io/crates/gitrs
 
 A simple, opinionated, tool, written in Rust, for declaratively managing Git
 repos on your machine.
