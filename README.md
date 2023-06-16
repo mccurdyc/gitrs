@@ -1,6 +1,8 @@
 <!-- vale off -->
 ![](./docs/imgs/logo.png)
 
+[![Build Status]][actions] [![Latest Version]][crates.io]
+
 [Build Status]: https://img.shields.io/github/actions/workflow/status/mccurdyc/gitrs/rust.yml?branch=main
 [actions]: https://github.com/mccurdyc/gitrs/actions?query=branch%3Amain
 [Latest Version]: https://img.shields.io/crates/v/gitrs.svg
