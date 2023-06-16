@@ -1,7 +1,7 @@
 <!-- vale off -->
 ![](./docs/imgs/logo.png)
 
-https://img.shields.io/github/v/release/mccurdyc/gitrs?label=gitrs&sort=semver
+![](https://img.shields.io/github/v/release/mccurdyc/gitrs?label=gitrs&sort=semver)
 
 A simple, opinionated, tool, written in Rust, for declaratively managing Git
 repos on your machine.
