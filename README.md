@@ -17,7 +17,7 @@ against repos.
 cargo install gitrs
 ```
 
-### Via `nixpkgs
+### Via `nixpkgs`
 
 TODO
 
