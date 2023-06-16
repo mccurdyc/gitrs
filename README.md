@@ -9,6 +9,18 @@ repos on your machine.
 against repos.
 "opinionated" - similar to Go and the old `$GOPATH` is how repos are stored.
 
+## Installation
+
+### Via `cargo`
+
+```
+cargo install gitrs
+```
+
+### Via `nixpkgs
+
+TODO
+
 ## Usage
 
 Environment variables
