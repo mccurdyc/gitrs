@@ -1,6 +1,6 @@
 [package]
 name = "gitrs"
-version = "0.3.3"
+version = "0.3.4"
 authors = ["mccurdyc"]
 description = "A simple, opinionated, tool, written in Rust, for declaratively managing Git repos on your machine."
 readme = "./README.md"
