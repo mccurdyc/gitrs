@@ -20,3 +20,12 @@
 ## Nix
 
 - [Contributing to nixpkgs](https://floxdev.com/blog/nixpkgs-contribution)
+- [Rust nixpkgs](https://ryantm.github.io/nixpkgs/languages-frameworks/rust/)
+> The Cargo hash is obtained by inserting a fake checksum into the expression and
+> building the package once. The correct checksum can then be taken from the
+> failed build.
+
+```
+  cargoSha256 = lib.fakeSha256;
+  cargoHash = lib.fakeHash;
+```
