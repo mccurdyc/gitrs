@@ -7,7 +7,6 @@ readme = "./README.md"
 homepage = "https://github.com/mccurdyc/gitrs"
 repository = "https://github.com/mccurdyc/gitrs"
 license = "MIT"
-license-file = "./LICENSE.md"
 keywords = ["git", "repositories", "declarative"]
 edition = "2021"
 proc-macro = true
