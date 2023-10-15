@@ -25,7 +25,7 @@ cargo install gitrs
 ### Via `nixpkgs`
 
 ```bash
-nix develop 'nixpkgs#gitrs'
+nix shell 'nixpkgs/nixos-unstable#gitrs' --command gitrs --version
 ```
 
 ## Usage
