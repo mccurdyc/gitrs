@@ -1,4 +1,3 @@
-<!-- vale off -->
 ![](./docs/imgs/logo.png)
 
 [![Build Status]][actions] [![Latest Version]][crates.io]
@@ -10,7 +9,6 @@
 
 A simple, opinionated, tool, written in Rust, for declaratively managing Git
 repos on your machine.
-<!-- vale on -->
 
 "simple" - limited in what it supports. For example, won't support running commands
 against repos.
@@ -20,13 +18,15 @@ against repos.
 
 ### Via `cargo`
 
-```
+```bash
 cargo install gitrs
 ```
 
 ### Via `nixpkgs`
 
-TODO
+```bash
+nix develop 'nixpkgs#gitrs'
+```
 
 ## Usage
 
