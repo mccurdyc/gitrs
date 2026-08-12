@@ -1,10 +1,10 @@
 use anyhow::{Context, Result};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
-use serde_yaml;
 use std::collections::HashMap;
-use std::fs::{create_dir_all, File, OpenOptions};
+use std::fs::{File, OpenOptions, create_dir_all};
 use std::path::PathBuf;
+use yaml_serde;
 
 use crate::repo::Repo;
 
@@ -62,14 +62,14 @@ impl Config {
             .create(true)
             .open(self.metadata.path.as_path())
             .context("Couldn't open file")?;
-        Ok(serde_yaml::to_writer(f, &self)?)
+        Ok(yaml_serde::to_writer(f, &self)?)
     }
 
     /// read reads the config file.
     pub fn read(&self, p: PathBuf) -> Result<Config> {
         let f = File::open(p.clone())?;
 
-        let mut cfg: Config = serde_yaml::from_reader(f)?;
+        let mut cfg: Config = yaml_serde::from_reader(f)?;
         cfg.metadata.path = p;
         Ok(cfg)
     }
@@ -124,7 +124,7 @@ impl Config {
 mod tests {
     use super::*;
     use crate::repo;
-    use tempfile::{tempdir, TempDir};
+    use tempfile::{TempDir, tempdir};
     extern crate log;
     use env_logger;
 

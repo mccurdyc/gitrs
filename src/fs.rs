@@ -1,5 +1,5 @@
 use crate::repo;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use git2::{Cred, RemoteCallbacks};
 use home;
 use log::{debug, error};
@@ -126,7 +126,7 @@ fn root(p: Option<PathBuf>) -> PathBuf {
 mod tests {
     use super::*;
     use repo;
-    use tempfile::{tempdir, TempDir};
+    use tempfile::{TempDir, tempdir};
     extern crate log;
     use env_logger;
 
@@ -167,7 +167,9 @@ mod tests {
     fn test_init_from_default() {
         let root = setup();
         let old_home = env::var("HOME").expect("failed to get old home");
-        env::set_var("HOME", root.path().as_os_str());
+        unsafe {
+            env::set_var("HOME", root.path().as_os_str());
+        }
 
         let want = home::home_dir()
             .expect("couldn't get user's HOME directory")
@@ -178,7 +180,9 @@ mod tests {
         assert_eq!(want.exists(), true);
         assert_eq!(got, want);
 
-        env::set_var("HOME", old_home);
+        unsafe {
+            env::set_var("HOME", old_home);
+        }
         cleanup(root);
     }
 
