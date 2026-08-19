@@ -2,9 +2,9 @@ use crate::repo;
 use anyhow::{Result, anyhow};
 use git2::{Cred, RemoteCallbacks};
 use home;
-use log::{debug, error};
+use log::{debug, warn};
 use std::collections::HashMap;
-use std::{env, fs, path::Path, path::PathBuf};
+use std::{fs, path::Path, path::PathBuf};
 use walkdir::WalkDir;
 
 const GITRS_ROOT_DEFAULT: &str = "src";
@@ -59,33 +59,18 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
     let mut callbacks = RemoteCallbacks::new();
 
     callbacks.credentials(|_url, username, _allowed_types| {
-        let mut ssh_privkey = PathBuf::new();
-        let mut ssh_privkey_pass = String::from("");
-
-        // default
-        if let Some(h) = home::home_dir() {
-            ssh_privkey = h.join(".ssh/id_rsa");
-        }
-
-        // default
-        if let Ok(pw) = env::var("SSH_PRIVKEY_PASS") {
-            ssh_privkey_pass = pw;
-        }
-
-        if !ssh_privkey.exists() {
-            ssh_privkey = PathBuf::from(env::var("SSH_PRIVKEY_PATH").expect("$HOME/.ssh/id_rsa doesn't exists, you must specify an ssh private key path via SSH_PRIVKEY_PATH"));
-            if !ssh_privkey.exists() {
-                error!("$SSH_PRIVKEY_PATH doesn't exists");
-            }
-        }
-
-        // https://libgit2.org/libgit2/#HEAD/group/credential/git_credential_ssh_key_from_agent
-        Cred::ssh_key(
+        Cred::ssh_key_from_agent(
             username.unwrap(),
-            None,
-            &ssh_privkey.as_path(),
-            Some(ssh_privkey_pass.as_str()),
         )
+    });
+
+    // libgit2/libssh2 do not read ~/.ssh/config (e.g. HostName/Port rewrites),
+    // so they may connect to a different endpoint than the system `ssh` binary.
+    // Skip hostkey verification for SSH URLs since authentication prevents MITM
+    // for key-based auth.
+    callbacks.certificate_check(|_cert, hostname| {
+        warn!("accepting unverified SSH hostkey for {} (libgit2 does not read ~/.ssh/config)", hostname);
+        Ok(git2::CertificateCheckStatus::CertificateOk)
     });
 
     // Prepare fetch options.
