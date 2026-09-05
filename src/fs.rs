@@ -1,10 +1,11 @@
 use crate::repo;
 use anyhow::{Result, anyhow};
 use git2::{Cred, RemoteCallbacks};
+use ssh2;
 use home;
-use log::{debug, error};
+use log::{debug, info};
 use std::collections::HashMap;
-use std::{env, fs, path::Path, path::PathBuf};
+use std::{fs, path::Path, path::PathBuf};
 use walkdir::WalkDir;
 
 const GITRS_ROOT_DEFAULT: &str = "src";
@@ -31,10 +32,10 @@ fn sync_with_fn(
         let f = d.strip_prefix(root.as_path())?;
         debug!("Using directory: {:?}", d);
 
-        // TODO (mccurdyc): consider fetching updates for all repos here.
+        // TODO: consider fetching updates for all repos here.
         if let Some(s) = f.to_str() {
             if !repos.contains_key(s) {
-                // TODO (mccurdyc): prompt for input if there are uncommitted changes.
+                // TODO: prompt for input if there are uncommitted changes.
                 fs::remove_dir_all(d)?;
             }
         };
@@ -54,38 +55,36 @@ fn sync_with_fn(
     Ok(())
 }
 
-// https://docs.rs/git2/latest/git2/build/struct.RepoBuilder.html
+/// clone_ssh clones a git repository to a specified path.
+///
+/// One thing to note is that clone_ssh does NOT respect your SSH config because
+/// clone_ssh underneath uses libssh2 which does not respect your SSH config by default.
+///
+// TODO: support parsing a user's ssh config.
 fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
     let mut callbacks = RemoteCallbacks::new();
 
     callbacks.credentials(|_url, username, _allowed_types| {
-        let mut ssh_privkey = PathBuf::new();
-        let mut ssh_privkey_pass = String::from("");
-
-        // default
-        if let Some(h) = home::home_dir() {
-            ssh_privkey = h.join(".ssh/id_rsa");
-        }
-
-        // default
-        if let Ok(pw) = env::var("SSH_PRIVKEY_PASS") {
-            ssh_privkey_pass = pw;
-        }
-
-        if !ssh_privkey.exists() {
-            ssh_privkey = PathBuf::from(env::var("SSH_PRIVKEY_PATH").expect("$HOME/.ssh/id_rsa doesn't exists, you must specify an ssh private key path via SSH_PRIVKEY_PATH"));
-            if !ssh_privkey.exists() {
-                error!("$SSH_PRIVKEY_PATH doesn't exists");
-            }
-        }
-
-        // https://libgit2.org/libgit2/#HEAD/group/credential/git_credential_ssh_key_from_agent
-        Cred::ssh_key(
+        Cred::ssh_key_from_agent(
             username.unwrap(),
-            None,
-            &ssh_privkey.as_path(),
-            Some(ssh_privkey_pass.as_str()),
         )
+    });
+
+    callbacks.certificate_check(|cert, hostname| {
+        // GitHub serves ECDSA by "default" or in higher order because it's ECDSA is more
+        // widely accepted by clients than ED25519 and RSA is more legacy.
+        let raw = cert.as_hostkey()
+            // and_then defines a new Option and "flattens" the result
+            // it's lazy.
+            .and_then(|hostkey| hostkey.hostkey())
+            .ok_or_else(|| Err(anyhow::anyhow!("issue extracting or encoding the host key")))?;
+
+            // TODO: read known hosts
+        let s = ssh2::Session::new().or_else(|e| Err(anyhow::anyhow!("failed to create ssh session - {}", e)))?;
+        let kh = s.known_hosts().or_else(|e| Err(anyhow::anyhow!("failed to create known hosts - {}", e)))?;
+        kh.check(hostname, raw);
+
+        Ok(git2::CertificateCheckStatus::CertificateOk)
     });
 
     // Prepare fetch options.
@@ -97,7 +96,7 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
     builder.fetch_options(fo);
 
     // Clone the project.
-    debug!("Using clone url: {}", url);
+    info!("cloning: {}", url);
     match builder.clone(url, dst) {
         Ok(_) => Ok(()),
         Err(e) => Err(anyhow!(e)),

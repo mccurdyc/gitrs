@@ -1,7 +1,6 @@
 use anyhow::{Context, Error};
 use clap::{Parser, Subcommand};
 extern crate log;
-use env_logger;
 use std::env;
 use std::path::PathBuf;
 
@@ -13,8 +12,10 @@ pub mod repo;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
+    // Directory that you want gitrs to sync to
     #[arg(global = true, long, value_name = "FILE")]
     root: Option<PathBuf>,
+    // Path to your gitrs config file.
     #[arg(global = true, long, value_name = "FILE")]
     config: Option<PathBuf>,
 

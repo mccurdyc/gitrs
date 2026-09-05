@@ -6,7 +6,7 @@ log := "warn"
 export JUST_LOG := log
 
 build:
-    cargo build --release --bin app
+    cargo build --release --bin gitrs
 
 test:
     cargo test -- --nocapture

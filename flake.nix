@@ -24,8 +24,12 @@
         inputs.rust-flake.flakeModules.nixpkgs
       ];
 
-      perSystem = {
+      perSystem = { pkgs, ... }: {
         mccurdyc.rust.enable = true;
+        mccurdyc.devshell.extraPackages = [
+          pkgs.pkg-config
+          pkgs.openssl
+        ];
       };
     };
 }
