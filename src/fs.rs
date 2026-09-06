@@ -1,7 +1,8 @@
 use crate::repo;
+use std::io;
 use anyhow::{Result, anyhow};
 use git2::{Cred, RemoteCallbacks};
-use ssh2;
+use ssh2::{CheckResult, KnownHostFileKind, KnownHostKeyFormat};
 use home;
 use log::{debug, info};
 use std::collections::HashMap;
@@ -73,18 +74,46 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
     callbacks.certificate_check(|cert, hostname| {
         // GitHub serves ECDSA by "default" or in higher order because it's ECDSA is more
         // widely accepted by clients than ED25519 and RSA is more legacy.
+
+        let hostkey = cert.as_hostkey();
         let raw = cert.as_hostkey()
             // and_then defines a new Option and "flattens" the result
             // it's lazy.
             .and_then(|hostkey| hostkey.hostkey())
             .ok_or_else(|| Err(anyhow::anyhow!("issue extracting or encoding the host key")))?;
 
-            // TODO: read known hosts
         let s = ssh2::Session::new().or_else(|e| Err(anyhow::anyhow!("failed to create ssh session - {}", e)))?;
-        let kh = s.known_hosts().or_else(|e| Err(anyhow::anyhow!("failed to create known hosts - {}", e)))?;
-        kh.check(hostname, raw);
+        let known_hosts = s.known_hosts().or_else(|e| Err(anyhow::anyhow!("failed to create known hosts - {}", e)))?;
 
+         match known_hosts.check(hostname, raw) {
+        CheckResult::Match => Ok(git2::CertificateCheckStatus::CertificateOk),
+        CheckResult::NotFound => {
+            info!("Host not found. Is adding it okay? y/n");
+
+                let mut buffer = String::new();
+    let stdin = io::stdin();
+    stdin.read_line(&mut buffer).or_else(|e| Err(anyhow::anyhow!("failed to read line - {}", e)));
+
+    if buffer == "y" {
+        known_hosts.add(hostname, raw, "added by gitrs", KnownHostFileKind::OpenSSH);
         Ok(git2::CertificateCheckStatus::CertificateOk)
+        } else {
+            Ok(git2::CertificateCheckStatus::CertificatePassthrough)
+    }
+    },
+        CheckResult::Mismatch => {
+            info!("Mismatch. Is this expected? y/n");
+                let mut buffer = String::new();
+    let stdin = io::stdin();
+    stdin.read_line(&mut buffer).or_else(|e| anyhow::anyhow!("failed to read line"));
+    if buffer == "y" {
+        known_hosts.add(hostname, raw, "added by gitrs", );
+    }
+        Ok(git2::CertificateCheckStatus::CertificateOk)
+        }
+        CheckResult::Failure => panic!("failed to check the known hosts"),
+    }
+
     });
 
     // Prepare fetch options.
