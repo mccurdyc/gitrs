@@ -1,11 +1,11 @@
 use crate::repo;
-use std::io;
 use anyhow::{Result, anyhow};
 use git2::{Cred, RemoteCallbacks};
-use ssh2::{CheckResult, KnownHostFileKind, KnownHostKeyFormat};
 use home;
-use log::{debug, info};
+use log::{debug, error, info};
+use ssh2::CheckResult;
 use std::collections::HashMap;
+use std::io;
 use std::{fs, path::Path, path::PathBuf};
 use walkdir::WalkDir;
 
@@ -65,55 +65,82 @@ fn sync_with_fn(
 fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
     let mut callbacks = RemoteCallbacks::new();
 
-    callbacks.credentials(|_url, username, _allowed_types| {
-        Cred::ssh_key_from_agent(
-            username.unwrap(),
-        )
-    });
+    callbacks
+        .credentials(|_url, username, _allowed_types| Cred::ssh_key_from_agent(username.unwrap()));
 
     callbacks.certificate_check(|cert, hostname| {
         // GitHub serves ECDSA by "default" or in higher order because it's ECDSA is more
         // widely accepted by clients than ED25519 and RSA is more legacy.
 
         let hostkey = cert.as_hostkey();
-        let raw = cert.as_hostkey()
+        let raw = hostkey
+            .clone()
             // and_then defines a new Option and "flattens" the result
             // it's lazy.
-            .and_then(|hostkey| hostkey.hostkey())
-            .ok_or_else(|| Err(anyhow::anyhow!("issue extracting or encoding the host key")))?;
+            .and_then(|k| k.hostkey())
+            .ok_or_else(|| git2::Error::from_str("issue extracting or encoding the host key"))?;
 
-        let s = ssh2::Session::new().or_else(|e| Err(anyhow::anyhow!("failed to create ssh session - {}", e)))?;
-        let known_hosts = s.known_hosts().or_else(|e| Err(anyhow::anyhow!("failed to create known hosts - {}", e)))?;
+        let s = ssh2::Session::new()
+            .inspect_err(|e| error!("failed to create ssh session - {}", e))
+            .unwrap();
+        let mut known_hosts = s
+            .known_hosts()
+            .inspect_err(|e| error!("failed to create known hosts - {}", e))
+            .unwrap();
 
-         match known_hosts.check(hostname, raw) {
-        CheckResult::Match => Ok(git2::CertificateCheckStatus::CertificateOk),
-        CheckResult::NotFound => {
-            info!("Host not found. Is adding it okay? y/n");
+        let t = hostkey
+            .and_then(|k| k.hostkey_type())
+            .map(|k| match k {
+                git2::cert::SshHostKeyType::Unknown => ssh2::KnownHostKeyFormat::Unknown,
+                git2::cert::SshHostKeyType::Rsa => ssh2::KnownHostKeyFormat::SshRsa,
+                git2::cert::SshHostKeyType::Dss => ssh2::KnownHostKeyFormat::SshDss,
+                git2::cert::SshHostKeyType::Ecdsa256 => ssh2::KnownHostKeyFormat::Ecdsa256,
+                git2::cert::SshHostKeyType::Ecdsa384 => ssh2::KnownHostKeyFormat::Ecdsa384,
+                git2::cert::SshHostKeyType::Ecdsa521 => ssh2::KnownHostKeyFormat::Ecdsa521,
+                git2::cert::SshHostKeyType::Ed255219 => ssh2::KnownHostKeyFormat::Ed25519,
+                _ => ssh2::KnownHostKeyFormat::Unknown,
+            })
+            .ok_or_else(|| git2::Error::from_str("failed to get hostkey type"))?;
+
+        match known_hosts.check(hostname, raw) {
+            CheckResult::Match => Ok(git2::CertificateCheckStatus::CertificateOk),
+            CheckResult::NotFound => {
+                info!("Host not found. Is this host known? y/n");
 
                 let mut buffer = String::new();
-    let stdin = io::stdin();
-    stdin.read_line(&mut buffer).or_else(|e| Err(anyhow::anyhow!("failed to read line - {}", e)));
+                let stdin = io::stdin();
+                stdin
+                    .read_line(&mut buffer)
+                    .map_err(|_| git2::Error::from_str("failed to read line"))?;
 
-    if buffer == "y" {
-        known_hosts.add(hostname, raw, "added by gitrs", KnownHostFileKind::OpenSSH);
-        Ok(git2::CertificateCheckStatus::CertificateOk)
-        } else {
-            Ok(git2::CertificateCheckStatus::CertificatePassthrough)
-    }
-    },
-        CheckResult::Mismatch => {
-            info!("Mismatch. Is this expected? y/n");
+                if buffer == "y" {
+                    let _ = known_hosts
+                        .add(hostname, raw, "added by gitrs", t)
+                        .map_err(|_| git2::Error::from_str("failed to add to knownhosts"));
+                    Ok(git2::CertificateCheckStatus::CertificateOk)
+                } else {
+                    Ok(git2::CertificateCheckStatus::CertificatePassthrough)
+                }
+            }
+            CheckResult::Mismatch => {
+                info!("Mismatch. Is this expected? y/n");
                 let mut buffer = String::new();
-    let stdin = io::stdin();
-    stdin.read_line(&mut buffer).or_else(|e| anyhow::anyhow!("failed to read line"));
-    if buffer == "y" {
-        known_hosts.add(hostname, raw, "added by gitrs", );
-    }
-        Ok(git2::CertificateCheckStatus::CertificateOk)
+                let stdin = io::stdin();
+                stdin
+                    .read_line(&mut buffer)
+                    .map_err(|_| git2::Error::from_str("failed to read line"))?;
+
+                if buffer == "y" {
+                    let _ = known_hosts
+                        .add(hostname, raw, "added by gitrs", t)
+                        .map_err(|_| git2::Error::from_str("failed to add to knownhosts"));
+                    Ok(git2::CertificateCheckStatus::CertificateOk)
+                } else {
+                    Ok(git2::CertificateCheckStatus::CertificatePassthrough)
+                }
+            }
+            CheckResult::Failure => panic!("failed to check the known hosts"),
         }
-        CheckResult::Failure => panic!("failed to check the known hosts"),
-    }
-
     });
 
     // Prepare fetch options.
@@ -153,7 +180,7 @@ fn root(p: Option<PathBuf>) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use repo;
+    use std::env;
     use tempfile::{TempDir, tempdir};
     extern crate log;
     use env_logger;
@@ -229,7 +256,7 @@ mod tests {
     //                 .expect("sync url failed")
     //                 .pin(false)
     //                 .sha("".to_string())
-    //                 .to_owned(),
+    //                .to_owned(),
     //         )]),
     //         &false,
     //     );
