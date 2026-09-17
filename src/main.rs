@@ -1,5 +1,6 @@
 use anyhow::{Context, Error};
 use clap::{Parser, Subcommand};
+use env_logger::{Builder, Env, Target};
 extern crate log;
 use std::env;
 use std::path::PathBuf;
@@ -45,7 +46,12 @@ enum Commands {
 }
 
 fn main() -> anyhow::Result<(), Error> {
-    env_logger::init();
+    let env = Env::default().default_filter_or("info");
+
+    Builder::from_env(env)
+        .default_format()
+        .target(Target::Stdout)
+        .init();
 
     let cli = Cli::parse();
     run(cli)
@@ -74,8 +80,7 @@ fn run(mut c: Cli) -> anyhow::Result<(), Error> {
                 .with_context(|| format!("failed to remove repo: {}", repo))?;
         }
         Commands::Sync { clean_only } => {
-            fs::sync(cfg.root(), cfg.repos(), clean_only)
-                .with_context(|| format!("failed to sync repos"))?;
+            fs::sync(cfg.root(), cfg.repos(), clean_only).context("failed to sync repos")?;
         }
     }
     Ok(())
