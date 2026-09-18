@@ -153,8 +153,8 @@ mod tests {
 
         got.create().expect("expected to create test.yaml");
 
-        assert_eq!(root.path().exists(), true);
-        assert_eq!(root.path().join("test.yaml").exists(), true);
+        assert!(root.path().exists());
+        assert!(root.path().join("test.yaml").exists());
 
         got
     }
@@ -201,7 +201,7 @@ mod tests {
 
         let r = first.add("github.com/a/a".to_string(), false);
 
-        assert_eq!(r.err().is_none(), true);
+        assert!(r.err().is_none());
         assert_eq!(first.repos().len(), 1);
         assert_eq!(
             first.repos().to_owned(),
@@ -244,7 +244,7 @@ mod tests {
         let mut got = create_test_cfg(&root);
 
         let r = got.add("github.com/a/a".to_string(), false);
-        assert_eq!(r.err().is_none(), true);
+        assert!(r.err().is_none());
         assert_eq!(got.repos().len(), 1);
         assert_eq!(
             got.repos().to_owned(),
@@ -263,7 +263,7 @@ mod tests {
 
         // Try adding duplicate
         let r = got.add("github.com/a/a".to_string(), false);
-        assert_eq!(r.err().is_none(), true);
+        assert!(r.err().is_none());
         assert_eq!(
             got.repos().to_owned(),
             HashMap::from([(
@@ -280,7 +280,7 @@ mod tests {
         );
 
         let r = got.add("github.com/b/b".to_string(), false);
-        assert_eq!(r.err().is_none(), true);
+        assert!(r.err().is_none());
         assert_eq!(
             got.repos().to_owned(),
             HashMap::from([
@@ -318,7 +318,7 @@ mod tests {
         let mut got = create_test_cfg(&root);
 
         let r = got.add("github.com/a/a".to_string(), false);
-        assert_eq!(r.err().is_none(), true);
+        assert!(r.err().is_none());
         assert_eq!(got.repos().len(), 1);
         assert_eq!(
             got.repos().to_owned(),
@@ -336,13 +336,13 @@ mod tests {
         );
 
         let r = got.remove("github.com/a/a".to_string());
-        assert_eq!(r.err().is_none(), true);
+        assert!(r.err().is_none());
         assert_eq!(got.repos().len(), 0);
         assert_eq!(got.repos().to_owned(), HashMap::new());
 
         // Try removing twice
         let r = got.remove("github.com/a/a".to_string());
-        assert_eq!(r.err().is_none(), true);
+        assert!(r.err().is_none());
         assert_eq!(got.repos().len(), 0);
         assert_eq!(got.repos().to_owned(), HashMap::new());
 

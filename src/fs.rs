@@ -34,11 +34,11 @@ fn sync_with_fn(
         debug!("Using directory: {:?}", d);
 
         // TODO: consider fetching updates for all repos here.
-        if let Some(s) = f.to_str() {
-            if !repos.contains_key(s) {
-                // TODO: prompt for input if there are uncommitted changes.
-                fs::remove_dir_all(d)?;
-            }
+        if let Some(s) = f.to_str()
+            && !repos.contains_key(s)
+        {
+            // TODO: prompt for input if there are uncommitted changes.
+            fs::remove_dir_all(d)?;
         };
     }
 
@@ -74,7 +74,6 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
 
         let hostkey = cert.as_hostkey();
         let raw = hostkey
-            .clone()
             // and_then defines a new Option and "flattens" the result
             // it's lazy.
             .and_then(|k| k.hostkey())
@@ -105,7 +104,7 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
         match known_hosts.check(hostname, raw) {
             CheckResult::Match => Ok(git2::CertificateCheckStatus::CertificateOk),
             CheckResult::NotFound => {
-                info!("Host not found. Is this host known? y/n");
+                info!("Host ({}) not found. Is this host known? y/n", hostname);
 
                 let mut buffer = String::new();
                 let stdin = io::stdin();
@@ -113,7 +112,7 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
                     .read_line(&mut buffer)
                     .map_err(|_| git2::Error::from_str("failed to read line"))?;
 
-                if buffer == "y" {
+                if buffer.trim_end() == "y" {
                     let _ = known_hosts
                         .add(hostname, raw, "added by gitrs", t)
                         .map_err(|_| git2::Error::from_str("failed to add to knownhosts"));
@@ -130,7 +129,7 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
                     .read_line(&mut buffer)
                     .map_err(|_| git2::Error::from_str("failed to read line"))?;
 
-                if buffer == "y" {
+                if buffer.trim_end() == "y" {
                     let _ = known_hosts
                         .add(hostname, raw, "added by gitrs", t)
                         .map_err(|_| git2::Error::from_str("failed to add to knownhosts"));
@@ -174,7 +173,7 @@ fn root(p: Option<PathBuf>) -> PathBuf {
 
     // defaults to $HOME/src
     let h = home::home_dir().expect("couldn't get user's HOME directory");
-    return h.join(PathBuf::from(GITRS_ROOT_DEFAULT));
+    h.join(PathBuf::from(GITRS_ROOT_DEFAULT))
 }
 
 #[cfg(test)]
@@ -213,7 +212,7 @@ mod tests {
         let p = root.path().to_path_buf();
 
         init(Some(p.clone())).expect("init failed");
-        assert_eq!(p.exists(), true);
+        assert!(p.exists());
 
         cleanup(root);
     }
@@ -232,7 +231,7 @@ mod tests {
 
         let got = init(None).expect("init failed");
 
-        assert_eq!(want.exists(), true);
+        assert!(want.exists());
         assert_eq!(got, want);
 
         unsafe {
