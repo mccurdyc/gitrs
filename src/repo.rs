@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use log::debug;
 use serde::{Deserialize, Serialize};
 
@@ -8,6 +8,12 @@ pub struct Repo {
     url: String,
     pin: bool,
     sha: String,
+}
+
+impl Default for Repo {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 // Modeling after OpenOptions. This is so that Repo struct fields can change, but
@@ -96,15 +102,15 @@ mod tests {
 
         // contains ":"
         let got = r.url("a:a/a/a".to_string());
-        assert_eq!(got.is_err(), true);
+        assert!(got.is_err());
 
         // contains "@"
         let got = r.url("a@a/a/a".to_string());
-        assert_eq!(got.is_err(), true);
+        assert!(got.is_err());
 
         // <3
         let got = r.url("a/a".to_string());
-        assert_eq!(got.is_err(), true);
+        assert!(got.is_err());
     }
 
     #[test]
