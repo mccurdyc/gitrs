@@ -1,5 +1,6 @@
 use crate::repo;
 use anyhow::{Result, anyhow};
+use base64::prelude::*;
 use git2::{Cred, RemoteCallbacks};
 use home;
 use log::{debug, error, info};
@@ -72,6 +73,8 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
         // GitHub serves ECDSA by "default" or in higher order because it's ECDSA is more
         // widely accepted by clients than ED25519 and RSA is more legacy.
 
+        info!("verifying ssh hostkey for: {}", hostname);
+
         let hostkey = cert.as_hostkey();
         let raw = hostkey
             // and_then defines a new Option and "flattens" the result
@@ -87,6 +90,20 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
             .inspect_err(|e| error!("failed to create known hosts - {}", e))
             .unwrap();
 
+        // Load the user's known_hosts file if it exists so we can verify against
+        // previously-accepted keys rather than prompting every time.
+        let known_hosts_path = home::home_dir()
+            .map(|h| h.join(".ssh/known_hosts"))
+            .ok_or_else(|| git2::Error::from_str("failed to determine home directory"))?;
+
+        if known_hosts_path.exists() {
+            known_hosts
+                .read_file(&known_hosts_path, ssh2::KnownHostFileKind::OpenSSH)
+                .map_err(|e| {
+                    git2::Error::from_str(&format!("failed to read known_hosts: {}", e))
+                })?;
+        }
+
         let t = hostkey
             .and_then(|k| k.hostkey_type())
             .map(|k| match k {
@@ -101,10 +118,15 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
             })
             .ok_or_else(|| git2::Error::from_str("failed to get hostkey type"))?;
 
+        let encoded = BASE64_STANDARD.encode(raw);
+
         match known_hosts.check(hostname, raw) {
             CheckResult::Match => Ok(git2::CertificateCheckStatus::CertificateOk),
             CheckResult::NotFound => {
-                info!("Host ({}) not found. Is this host known? y/n", hostname);
+                info!(
+                    "Host ({}) with key type {:?} and key {} not found. Is this host known? y/n",
+                    hostname, t, encoded
+                );
 
                 let mut buffer = String::new();
                 let stdin = io::stdin();
@@ -113,16 +135,22 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
                     .map_err(|_| git2::Error::from_str("failed to read line"))?;
 
                 if buffer.trim_end() == "y" {
-                    let _ = known_hosts
+                    known_hosts
                         .add(hostname, raw, "added by gitrs", t)
-                        .map_err(|_| git2::Error::from_str("failed to add to knownhosts"));
+                        .map_err(|_| git2::Error::from_str("failed to add to knownhosts"))?;
+                    known_hosts
+                        .write_file(&known_hosts_path, ssh2::KnownHostFileKind::OpenSSH)
+                        .map_err(|_| git2::Error::from_str("failed to write knownhosts"))?;
                     Ok(git2::CertificateCheckStatus::CertificateOk)
                 } else {
                     Ok(git2::CertificateCheckStatus::CertificatePassthrough)
                 }
             }
             CheckResult::Mismatch => {
-                info!("Mismatch. Is this expected? y/n");
+                info!(
+                    "Host ({}) key mismatch (type {:?}, key {}). Is this expected? y/n",
+                    hostname, t, encoded
+                );
                 let mut buffer = String::new();
                 let stdin = io::stdin();
                 stdin
@@ -130,15 +158,18 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
                     .map_err(|_| git2::Error::from_str("failed to read line"))?;
 
                 if buffer.trim_end() == "y" {
-                    let _ = known_hosts
+                    known_hosts
                         .add(hostname, raw, "added by gitrs", t)
-                        .map_err(|_| git2::Error::from_str("failed to add to knownhosts"));
+                        .map_err(|_| git2::Error::from_str("failed to add to knownhosts"))?;
+                    known_hosts
+                        .write_file(&known_hosts_path, ssh2::KnownHostFileKind::OpenSSH)
+                        .map_err(|_| git2::Error::from_str("failed to write knownhosts"))?;
                     Ok(git2::CertificateCheckStatus::CertificateOk)
                 } else {
                     Ok(git2::CertificateCheckStatus::CertificatePassthrough)
                 }
             }
-            CheckResult::Failure => panic!("failed to check the known hosts"),
+            CheckResult::Failure => Err(git2::Error::from_str("failed to check the known hosts")),
         }
     });
 
@@ -154,7 +185,7 @@ fn clone_ssh(url: &str, dst: &Path) -> Result<()> {
     info!("cloning: {}", url);
     match builder.clone(url, dst) {
         Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!(e)),
+        Err(e) => Err(anyhow!("failed to clone - {}", e)),
     }
 }
 
