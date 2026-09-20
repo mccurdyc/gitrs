@@ -46,18 +46,18 @@
         let
           gitrs = pkgs.rustPlatform.buildRustPackage (finalAttrs: {
             pname = "gitrs";
-            version = "v0.4.0";
+            version = "v0.4.1";
 
             src = pkgs.fetchFromGitHub {
               owner = "mccurdyc";
               repo = "gitrs";
               rev = finalAttrs.version;
-              # nix-shell -p nix-prefetch-git --run "nix-prefetch-git --url https://github.com/mccurdyc/gitrs.git --rev v0.3.6"
-              hash = "sha256-MRkyEDQ2+c94z6Oo/+GZdw7RXzondczRMDfAFFdMiKo=";
+              # nix-shell -p nix-prefetch-git --run "nix-prefetch-git --url https://github.com/mccurdyc/gitrs.git --rev v0.4.1"
+              hash = "sha256-YxojhqcP5Jj+GUhZxwyz1WXpRrTc4mZKxJbJdbnEZ48=";
             };
 
             # cargoHash = pkgs.lib.fakeHash;
-            cargoHash = "sha256-S5TpiniKQbzLU4HvUgP1l/V3I5b9uU7ywOor5THNzEI=";
+            cargoHash = "sha256-uxK7HSP7rTPsnSwgj8pJRdXR2N9xqx21TycTRCjdAGo=";
 
             nativeBuildInputs = [
               pkgs.pkg-config # for openssl
