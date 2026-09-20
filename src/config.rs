@@ -59,7 +59,8 @@ impl Config {
         info!("Writing to config file: {:?}", self.metadata.path.as_path()); // path gets moved
         let f = OpenOptions::new()
             .create(true)
-            .append(true)
+            .write(true)
+            .truncate(true)
             .open(self.metadata.path.as_path())
             .context("Couldn't open file")?;
         Ok(yaml_serde::to_writer(f, &self)?)

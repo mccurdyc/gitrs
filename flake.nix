@@ -44,6 +44,34 @@
       perSystem =
         { pkgs, ... }:
         let
+          gitrs = pkgs.rustPlatform.buildRustPackage (finalAttrs: {
+            pname = "gitrs";
+            version = "v0.4.0";
+
+            src = pkgs.fetchFromGitHub {
+              owner = "mccurdyc";
+              repo = "gitrs";
+              rev = finalAttrs.version;
+              # nix-shell -p nix-prefetch-git --run "nix-prefetch-git --url https://github.com/mccurdyc/gitrs.git --rev v0.3.6"
+              hash = "sha256-MRkyEDQ2+c94z6Oo/+GZdw7RXzondczRMDfAFFdMiKo=";
+            };
+
+            # cargoHash = pkgs.lib.fakeHash;
+            cargoHash = "sha256-S5TpiniKQbzLU4HvUgP1l/V3I5b9uU7ywOor5THNzEI=";
+
+            nativeBuildInputs = [
+              pkgs.pkg-config # for openssl
+            ];
+
+            buildInputs = [
+              pkgs.openssl.dev
+            ]
+            ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
+              pkgs.libiconv
+              pkgs.libz
+            ];
+          });
+
           rustToolchain = (pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml).override {
             extensions = [
               "rust-src"
@@ -80,8 +108,8 @@
           mccurdyc.devshell.extraPackages = with pkgs; [
             pkg-config
             openssl
+            gitrs
           ];
-
           # Work around mccurdyc-preferences default formatter referencing
           # config.mccurdyc.pre-commit.enable without the pre-commit module
           # being imported by flakeModules.default.

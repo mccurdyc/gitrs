@@ -65,6 +65,8 @@ fn run(mut c: Cli) -> anyhow::Result<(), Error> {
     let r = fs::init(c.root).expect("failed to initialize root");
     let mut cfg = config::Config::new(r, PathBuf::from(".gitrs.yaml"))?;
 
+    // NOTE: reads the entire gitrs config into memory. this is notable because writes of the
+    // config file truncate contents first.
     cfg = match cfg.path().exists() {
         true => cfg.read(cfg.path()).expect("failed to read config"),
         false => cfg.create().expect("failed to create config"),
