@@ -1,5 +1,7 @@
 # Inspiration
 
+- <https://github.com/gabrie30/ghorg>
+- <https://github.com/hakoerber/git-repo-manager>
 - <http://myrepos.branchable.com/>
 - <https://github.com/orf/git-workspace#define-your-workspace>
   - clones all repos owned by a user or org. Expects you to exclude.
